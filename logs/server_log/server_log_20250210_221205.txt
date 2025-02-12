@@ -1,0 +1,11 @@
+2025-02-10 22:12:11 - Waiting for a new client to connect...
+2025-02-10 22:12:11 - Connected to ('127.0.0.1', 54467)
+2025-02-10 22:12:11 - Sent INIT message to Unity client
+2025-02-10 22:12:14 - Sent live check message to Unity.
+2025-02-10 22:12:17 - Sent live check message to Unity.
+2025-02-10 22:12:17 - Received LIVE_CHECK_ACK. Latency: 0.001 sec
+2025-02-10 22:12:20 - Sent live check message to Unity.
+2025-02-10 22:12:20 - Received LIVE_CHECK_ACK. Latency: 0.001 sec
+2025-02-10 22:12:23 - Sent live check message to Unity.
+2025-02-10 22:12:23 - Error in live check: [Errno 54] Connection reset by peer
+2025-02-10 22:12:23 - Server stopped.

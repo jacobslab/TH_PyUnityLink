@@ -1,0 +1,12 @@
+2025-02-10 22:19:25 - Waiting for a new client to connect...
+2025-02-10 22:19:25 - Connected to ('127.0.0.1', 54597)
+2025-02-10 22:19:25 - Sent INIT message to Unity client
+2025-02-10 22:19:26 - Sent live check message to Unity.
+2025-02-10 22:19:26 - Warning: Attempted to log EMA message before EMA session started.
+2025-02-10 22:19:26 - conn Received LIVE_CHECK_ACK. Latency: 0.005 sec
+2025-02-10 22:19:32 - Initiate an EMA session to Unity client with mode: TestMode
+2025-02-10 22:19:35 - Sent live check message to Unity.
+2025-02-10 22:19:35 - conn Received LIVE_CHECK_ACK. Latency: 0.083 sec
+2025-02-10 22:19:43 - Sent live check message to Unity.
+2025-02-10 22:19:43 - conn Received LIVE_CHECK_ACK. Latency: 0.011 sec
+2025-02-10 22:19:44 - Client ('127.0.0.1', 54597) disconnected.

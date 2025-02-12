@@ -25,13 +25,28 @@ class ConnectionManager:
         #self.server.bind(('192.168.0.101', 4100))
         self.server.listen(1)
 
+        # Get script path
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        log_base_dir = os.path.join(project_root, "logs")
+        server_log_dir = os.path.join(log_base_dir, "server_log")
+        self.ema_log_dir = os.path.join(log_base_dir, "ema_log")
+
+        # Ensure all log directories exist
+        for directory in [log_base_dir, server_log_dir, self.ema_log_dir]:
+            os.makedirs(directory, exist_ok=True)
+
+        # Generate unique log file names
+        self.server_log_file = os.path.join(server_log_dir, f"server_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        self.ema_log_file = None
+
         # Start a background thread to accept connections
         self.connection_thread = threading.Thread(target=self.accept_connections, daemon=True)
         self.connection_thread.start()
 
         # Live check thread
         self.live_check_running = False
-        self.live_check_interval = 15
+        self.live_check_interval = 3
         self.last_live_check_time = None  # Store timestamp for latency check
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
         self.live_check_thread.start()
@@ -67,13 +82,14 @@ class ConnectionManager:
                             if message.startswith("CAM_"):
                                 self.receive_logs(message)
                             """
+                            self.log_ema_message(message)
                             if message == "Unity_Command_EMA_START":
                                 self.audio_alert.stop_audio()
                                 self.log_timestamped(f"Unity EMA starts: {message}")
                             elif message == "LIVE_CHECK_ACK":
                                 latency = time.time() - self.last_live_check_time
-                                self.log_timestamped(f"Received LIVE_CHECK_ACK. Latency: {latency:.3f} sec")
-                            else:
+                                self.log_timestamped(f"conn Received LIVE_CHECK_ACK. Latency: {latency:.3f} sec")
+                            else:   
                                 self.log_timestamped(f"Received message from iPad EMA: {message}")
         
                         else:
@@ -101,6 +117,8 @@ class ConnectionManager:
     
     def send_start_signal(self, mode="TestMode"):
         if self.connection:
+            self.ema_log_file = os.path.join(self.ema_log_dir, f"ema_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+
             # Send the appropriate signal based on the mode
             if mode == "TestMode_BCI":
                 self.connection.sendall("EMA_Command_START_TESTMODE_BCI".encode('utf-8'))    
@@ -111,7 +129,6 @@ class ConnectionManager:
                 self.connection.sendall("EMA_Command_START".encode('utf-8'))
                 
                 #self.send_bci_command("Set event SessionState 1")
-
             self.log_timestamped(f"Initiate an EMA session to Unity client with mode: {mode}")
             self.audio_alert.play_audio()
             
@@ -133,29 +150,6 @@ class ConnectionManager:
         else:
             self.log_timestamped("No client connected!")
 
-    """
-    # receive logs
-    def receive_logs(self, message):
-        # Assuming the message contains the file name at the start
-        # Extract file name from the message
-        log_filename = message.strip()  # Strip any leading/trailing spaces/newlines
-
-        if not os.path.exists("logs"):
-            os.makedirs("logs")
-
-        # Full file path with the 'logs' directory
-        log_file_path = f"logs/{log_filename}"
-
-        # Read the log file data from the connection
-        with open(log_file_path, "wb") as log_file:
-            while True:
-                data = self.connection.recv(4096)
-                if not data:
-                    break
-                log_file.write(data)
-
-        self.log_timestamped(f"Log file received and saved: {log_file_path}")
-    """
 
     # Periodically sends a live check signal
     def live_check_loop(self):
@@ -165,17 +159,15 @@ class ConnectionManager:
                 self.connection.sendall("LIVE_CHECK".encode('utf-8'))
                 self.log_timestamped("Sent live check message to Unity.")
 
-                while self.server_running and self.live_check_running and self.connection:
-                    readable, _, _ = select.select([self.connection], [], [], 5)  # 5 secconds of timeout for no response
-                    if readable:
-                        data = self.connection.recv(1024).decode('utf-8')
-                        if data == "LIVE_CHECK_ACK":
-                            latency = time.time() - self.last_live_check_time
-                            self.log_timestamped(f"Received LIVE_CHECK_ACK. Latency: {latency:.3f} sec")
-                            break  # Exit the loop and schedule the next check
-                        else:
-                            self.log_timestamped("Warning: Unexpected response during live check.")
-                    # If no response, keep looping until an acknowledgment is received
+                #while self.server_running and self.live_check_running and self.connection:
+                readable, _, _ = select.select([self.connection], [], [], 5)  # 5 secconds of timeout for no response
+                if readable:
+                    data = self.connection.recv(1024).decode('utf-8')
+                    if data == "LIVE_CHECK_ACK":
+                        latency = time.time() - self.last_live_check_time
+                        self.log_timestamped(f"Received LIVE_CHECK_ACK. Latency: {latency:.3f} sec")
+                #           break  # Exit the loop and schedule the next check
+                # If no response, keep looping until an acknowledgment is received
 
             except Exception as e:
                 self.log_timestamped(f"Error in live check: {e}")
@@ -205,18 +197,6 @@ class ConnectionManager:
         except Exception as e:
             self.log_timestamped(f"Error sending command to BCI2000: {e}")
     
-
-    """
-    # send the "START" signal to unity
-    def send_start_signal(self):
-        if self.connection:
-            self.connection.sendall("EMA_Command_START".encode('utf-8'))
-            send_command_bci()
-            self.log_timestamped("Initiate an EMA session to Unity client")
-        else:
-            self.log_timestamped("No client connected!")
-    """
-    
     
     def get_next_start_time(self):
         """Returns the next scheduled start time."""
@@ -235,7 +215,18 @@ class ConnectionManager:
             self.server = None
         self.log_timestamped("Server stopped.")
 
-    # log with timestamp
+    # write server log with timestamp and save on file
     def log_timestamped(self, message):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"{timestamp} - {message}")
+        server_log_message = f"{timestamp} - {message}"
+        print(server_log_message)
+        with open(self.server_log_file, "a") as log_file:
+            log_file.write(server_log_message + "\n")
+    
+    # write ema log and save on file
+    def log_ema_message(self, message):
+        if not self.ema_log_file:  # Safety check in case no EMA session has started yet
+            self.log_timestamped("Warning: Attempted to log EMA message before EMA session started.")
+            return  
+        with open(self.ema_log_file, "a") as log_file:
+            log_file.write(message + "\n")
