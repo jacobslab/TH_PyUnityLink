@@ -66,6 +66,7 @@ class ConnectionManager:
                         # Start live check once a connection is established
                         if not self.live_check_thread.is_alive():
                             self.live_check_running = True
+                            self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
                             self.live_check_thread.start()          
                     else:
                         try:
@@ -90,33 +91,29 @@ class ConnectionManager:
     def send_message(self, message):
         if self.connection:
             self.connection.sendall(message.encode('utf-8'))
-            self.log_timestamped(f"Sent message to iPad EMA: {message}")
+            self.log_timestamped(f"Sent message to iPad: {message}")
         else:
             self.log_timestamped("No client connected!")
 
     # send the "View" signal to unity
     def send_view_signal(self):
         if self.connection:
-            self.connection.sendall("EMA_Command_INFO".encode('utf-8'))
+            self.connection.sendall("EMA_INFO".encode('utf-8'))
             self.log_timestamped("Show Info on Unity client")
         else:
             self.log_timestamped("No client connected!")
     
-    def send_start_signal(self, mode="TestMode"):
+    def send_start_signal(self, mode="EMA_Test"):
         if self.connection:
             self.ema_log_file = os.path.join(self.ema_log_dir, f"EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
             # Send the appropriate signal based on the mode
-            if mode == "TestMode_BCI":
-                self.connection.sendall("EMA_Command_START_TESTMODE_BCI".encode('utf-8'))    
-                #self.send_bci_command("Set event SessionState 1")
-            elif mode == "TestMode":
-                self.connection.sendall("EMA_Command_START_TESTMODE".encode('utf-8'))
-            elif mode == "EMA":
-                self.connection.sendall("EMA_Command_START".encode('utf-8'))
-                
-                #self.send_bci_command("Set event SessionState 1")
-            self.log_timestamped(f"Initiate an EMA session to Unity client with mode: {mode}")
+            if mode == "EMA_Test":
+                self.connection.sendall("EMA_START_Test".encode('utf-8'))    
+            elif mode == "EMA_Live":
+                self.connection.sendall("EMA_START_Live".encode('utf-8'))
+            
+            self.log_timestamped(f"Initiated an EMA session with mode: {mode}")
             self.audio_alert.play_audio()
             
         else:
@@ -132,18 +129,18 @@ class ConnectionManager:
     def send_cancel_signal(self):
         if self.connection:
             self.audio_alert.stop_audio()
-            self.connection.sendall("EMA_Command_CANCEL".encode('utf-8'))
+            self.connection.sendall("EMA_SKIP".encode('utf-8'))
             self.log_timestamped("EMA session skipped on Unity client")
         else:
             self.log_timestamped("No client connected!")
 
     def process_received_message(self, message):
-        if message == "Unity_Command_EMA_START":
+        if message == "EMA_ACK":
             self.audio_alert.stop_audio()
-            self.log_timestamped(f"Unity EMA starts: {message}")
+            self.log_timestamped(f"EMA_ACK: First 2 questions completed.")
         elif message == "LIVE_CHECK_ACK":
-            latency = time.time() - self.last_live_check_time
-            self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency:.4f} sec")
+            latency_ms = (time.time() - self.last_live_check_time) * 1000
+            self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
         else:
             self.log_timestamped(f"Received message from iPad EMA: {message}")
             self.log_ema_message(message)

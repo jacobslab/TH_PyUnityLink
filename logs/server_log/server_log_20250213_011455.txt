@@ -1,0 +1,11 @@
+2025-02-13 01:14:59 - Waiting for a new client to connect...
+2025-02-13 01:14:59 - Connected to ('127.0.0.1', 59901)
+2025-02-13 01:14:59 - Sent INIT message to Unity client
+2025-02-13 01:14:59 - Sent LIVE_CHECK to iPad
+2025-02-13 01:15:02 - Sent LIVE_CHECK to iPad
+2025-02-13 01:15:02 - Received LIVE_CHECK_ACK from iPad. Latency: 4.591 ms
+2025-02-13 01:15:05 - Sent LIVE_CHECK to iPad
+2025-02-13 01:15:05 - Received LIVE_CHECK_ACK from iPad. Latency: 0.913 ms
+2025-02-13 01:15:08 - Sent LIVE_CHECK to iPad
+2025-02-13 01:15:08 - Received LIVE_CHECK_ACK from iPad. Latency: 1.428 ms
+2025-02-13 01:15:08 - Client ('127.0.0.1', 59901) disconnected.

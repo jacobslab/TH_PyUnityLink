@@ -7,7 +7,7 @@ class UI:
         self.root.title("Treasure Hunt Remote Control")
         self.connection_manager = None
 
-        self.is_bci_enabled = tk.BooleanVar(value=False)
+        #self.is_bci_enabled = tk.BooleanVar(value=False)
         self.is_testmode_enabled = tk.BooleanVar(value=True)
 
         self.last_notification_time = None
@@ -32,11 +32,11 @@ class UI:
         self.next_start_label.pack(pady=10)
 
         # button for "VIEW" signal
-        view_button = tk.Button(self.root, text="Show INFO", command=self.send_view_signal)
+        view_button = tk.Button(self.root, text="Show INFO on iPad", command=self.send_view_signal)
         view_button.pack(pady=10)
 
         # button for "START" signal
-        start_button = tk.Button(self.root, text="Start EMA", command=self.send_start_signal)
+        start_button = tk.Button(self.root, text="Start EMA Sequence", command=self.send_start_signal)
         start_button.pack(padx=5)
 
         # button for "CANCEL" signal
@@ -48,8 +48,8 @@ class UI:
         bci_frame.pack(pady=10)
 
         # Create a toggle for BCI Connection
-        bci_toggle = tk.Checkbutton(bci_frame, text="Enable BCI2000", variable=self.is_bci_enabled)
-        bci_toggle.pack(side=tk.LEFT)
+        #bci_toggle = tk.Checkbutton(bci_frame, text="Enable BCI2000", variable=self.is_bci_enabled)
+        #bci_toggle.pack(side=tk.LEFT)
 
         # Create a toggle for Test Mode
         test_toggle = tk.Checkbutton(bci_frame, text="Test Mode", variable=self.is_testmode_enabled)
@@ -75,12 +75,10 @@ class UI:
     def send_start_signal(self):
         if self.connection_manager:
             # Determine mode based on BCI and Test Mode toggles
-            if self.is_bci_enabled.get() and self.is_testmode_enabled.get():
-                mode = "TestMode_BCI"
-            elif self.is_testmode_enabled.get():
-                mode = "TestMode"
-            elif self.is_bci_enabled.get():
-                mode = "EMA"
+            if self.is_testmode_enabled.get():
+                mode = "EMA_Test"
+            else:
+                mode = "EMA_Live"
             
             current_time = datetime.now()
             self.last_start_label.config(text=f"Session Start: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
