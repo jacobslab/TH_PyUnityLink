@@ -1,3 +1,0 @@
-Trying to ses session state to 1, but BCI not available at Start signal
-Trying to ses session state to 0, but BCI not available at Skip signal
-Trying to ses session state to 0, but BCI not available at Skip signal
