@@ -1,2 +1,0 @@
-Trying to ses session state to 1, but BCI not available at Start signal
-LIVE_CHECK_ACK

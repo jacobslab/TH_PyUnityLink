@@ -49,7 +49,6 @@ class ConnectionManager:
         self.live_check_interval = 3
         self.last_live_check_time = None  # Store timestamp for latency check
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
-        self.live_check_thread.start()
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -63,9 +62,11 @@ class ConnectionManager:
                         self.log_timestamped(f"Connected to {self.address}")
                         self.connection.sendall("Server Initiated".encode('utf-8'))
                         self.log_timestamped("Sent INIT message to Unity client")
-
+                        
                         # Start live check once a connection is established
-                        self.live_check_running = True
+                        if not self.live_check_thread.is_alive():
+                            self.live_check_running = True
+                            self.live_check_thread.start()          
                     else:
                         try:
                             data = self.connection.recv(1024)
@@ -75,23 +76,9 @@ class ConnectionManager:
                             self.handle_disconnection()
                 if self.connection:
                     try:
-                        data = self.connection.recv(4096)
+                        data = self.connection.recv(4096).decode('utf-8')
                         if data:
-                            message = data.decode('utf-8')
-                            """
-                            if message.startswith("CAM_"):
-                                self.receive_logs(message)
-                            """
-                            self.log_ema_message(message)
-                            if message == "Unity_Command_EMA_START":
-                                self.audio_alert.stop_audio()
-                                self.log_timestamped(f"Unity EMA starts: {message}")
-                            elif message == "LIVE_CHECK_ACK":
-                                latency = time.time() - self.last_live_check_time
-                                self.log_timestamped(f"conn Received LIVE_CHECK_ACK. Latency: {latency:.3f} sec")
-                            else:   
-                                self.log_timestamped(f"Received message from iPad EMA: {message}")
-        
+                            self.process_received_message(data)
                         else:
                             self.handle_disconnection()
                     except (ConnectionResetError, BrokenPipeError):
@@ -117,7 +104,7 @@ class ConnectionManager:
     
     def send_start_signal(self, mode="TestMode"):
         if self.connection:
-            self.ema_log_file = os.path.join(self.ema_log_dir, f"ema_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+            self.ema_log_file = os.path.join(self.ema_log_dir, f"EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
             # Send the appropriate signal based on the mode
             if mode == "TestMode_BCI":
@@ -137,11 +124,11 @@ class ConnectionManager:
         
         schedule_start(self, mode, self.update_ui_callback)
 
+    """
     def send_init_bci_signal(self):
         self.connection.send("EMA_Command_INIT_BCI".encode('utf-8'))
         self.log_timestamped("Inti BCI signal sent")
-
-    # send the "Cancel" signal to unity
+    """
     def send_cancel_signal(self):
         if self.connection:
             self.audio_alert.stop_audio()
@@ -150,6 +137,16 @@ class ConnectionManager:
         else:
             self.log_timestamped("No client connected!")
 
+    def process_received_message(self, message):
+        if message == "Unity_Command_EMA_START":
+            self.audio_alert.stop_audio()
+            self.log_timestamped(f"Unity EMA starts: {message}")
+        elif message == "LIVE_CHECK_ACK":
+            latency = time.time() - self.last_live_check_time
+            self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency:.4f} sec")
+        else:
+            self.log_timestamped(f"Received message from iPad EMA: {message}")
+            self.log_ema_message(message)
 
     # Periodically sends a live check signal
     def live_check_loop(self):
@@ -157,23 +154,10 @@ class ConnectionManager:
             try:
                 self.last_live_check_time = time.time()
                 self.connection.sendall("LIVE_CHECK".encode('utf-8'))
-                self.log_timestamped("Sent live check message to Unity.")
-
-                #while self.server_running and self.live_check_running and self.connection:
-                readable, _, _ = select.select([self.connection], [], [], 5)  # 5 secconds of timeout for no response
-                if readable:
-                    data = self.connection.recv(1024).decode('utf-8')
-                    if data == "LIVE_CHECK_ACK":
-                        latency = time.time() - self.last_live_check_time
-                        self.log_timestamped(f"Received LIVE_CHECK_ACK. Latency: {latency:.3f} sec")
-                #           break  # Exit the loop and schedule the next check
-                # If no response, keep looping until an acknowledgment is received
-
+                self.log_timestamped("Sent LIVE_CHECK to iPad")
             except Exception as e:
-                self.log_timestamped(f"Error in live check: {e}")
-
-        # Schedule the next live check in exactly 15 seconds
-        if self.server_running:
+                self.log_timestamped(f"Error sending live check: {e}")
+                
             threading.Timer(self.live_check_interval, self.live_check_loop).start()
 
     # Handles client disconnection
@@ -184,9 +168,8 @@ class ConnectionManager:
             self.connection.close()
             self.connection = None
             self.live_check_running = False
-
+    """
     def send_bci_command(self, command):
-        """Send a command to the BCI2000 system."""
         try:
             bci_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             bci_socket.connect(("192.168.0.101", 4000))
@@ -196,15 +179,12 @@ class ConnectionManager:
             bci_socket.close()
         except Exception as e:
             self.log_timestamped(f"Error sending command to BCI2000: {e}")
-    
+    """
     
     def get_next_start_time(self):
-        """Returns the next scheduled start time."""
         return self.next_start_time
 
-    # exit
     def stop_server(self):
-        """Safely stops the server and closes the socket."""
         self.server_running = False
         self.live_check_running = False
         if self.connection:
@@ -213,9 +193,9 @@ class ConnectionManager:
         if self.server:
             self.server.close()
             self.server = None
-        self.log_timestamped("Server stopped.")
+        self.log_timestamped("Server stopped")
 
-    # write server log with timestamp and save on file
+    # Log and save server messages with timestamp
     def log_timestamped(self, message):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         server_log_message = f"{timestamp} - {message}"
@@ -223,9 +203,9 @@ class ConnectionManager:
         with open(self.server_log_file, "a") as log_file:
             log_file.write(server_log_message + "\n")
     
-    # write ema log and save on file
+    # Log and save EMA messages with timestamp
     def log_ema_message(self, message):
-        if not self.ema_log_file:  # Safety check in case no EMA session has started yet
+        if not self.ema_log_file:
             self.log_timestamped("Warning: Attempted to log EMA message before EMA session started.")
             return  
         with open(self.ema_log_file, "a") as log_file:
