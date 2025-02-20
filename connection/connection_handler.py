@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from utils.scheduler.scheduler import get_next_start_time, schedule_start
 from utils.audio.audio_alert import AudioAlert
+from utils.bci2000.bci2000_handler import BCI2000Handler
 
 class ConnectionManager:
     def __init__(self, update_ui_callback):
@@ -52,6 +53,9 @@ class ConnectionManager:
 
         # Message buffer for incoming data from EMA
         self.buffer = ""
+
+        # BCI2000 component
+        self.bci_handler = BCI2000Handler()
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -152,8 +156,9 @@ class ConnectionManager:
             elif message_line == "LIVE_CHECK_ACK":
                 latency_ms = (time.time() - self.last_live_check_time) * 1000
                 self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
-            elif message_line.startswith("BCI_Sync"):
-                self.process_bci_sync_message(message_line)
+            elif message_line.startswith("BCI_Sync:"):
+                self.bci_handler.sync_bci_event(message_line)
+                self.log_bci_sync_message(message_line)
             else:
                 self.log_ema_message(message_line)
 
@@ -208,5 +213,5 @@ class ConnectionManager:
         with open(self.ema_log_file, "a") as log_file:
             log_file.write(message.strip() + "\n")
     
-    def process_bci_sync_message(self, message):
+    def log_bci_sync_message(self, message):
         self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
