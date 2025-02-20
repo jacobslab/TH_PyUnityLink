@@ -4,12 +4,12 @@ import threading
 from datetime import datetime
 
 class AudioAlert:
-    def __init__(self, alert_interval = 120, cancel_callback = None):
+    def __init__(self, alert_interval = 120, skip_callback = None):
         self.audio_file = "audio_alert.wav"
         self._alert_interval = alert_interval
         self.end_playing = False
         self.play_thread = None
-        self.cancel_callback = cancel_callback
+        self.skip_callback = skip_callback
     
     def play_audio(self):
         """Start playing audio in a separate thread."""
@@ -32,8 +32,8 @@ class AudioAlert:
 
         self.log_timestamped("Audio stopped")
         
-        if self.cancel_callback:
-            self.cancel_callback()
+        if self.skip_callback:
+            self.skip_callback()
 
         self.end_playing = True
 
@@ -62,4 +62,4 @@ class AudioAlert:
     @staticmethod
     def log_timestamped(message):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"{timestamp} - {message}")
+        print(f"{timestamp} - [AudioAlert] {message}")

@@ -40,7 +40,7 @@ class UI:
         start_button.pack(padx=5)
 
         # button for "CANCEL" signal
-        cancel_button = tk.Button(self.root, text="Skip Current EMA", command=self.send_cancel_signal)
+        cancel_button = tk.Button(self.root, text="Skip Current EMA", command=self.send_skip_signal)
         cancel_button.pack(padx=5)
 
         # Create a frame for the BCI toggle and label
@@ -98,9 +98,9 @@ class UI:
         else:
             self.next_start_label.config(text="Next Notification: N/A")
 
-    def send_cancel_signal(self):
+    def send_skip_signal(self):
         if self.connection_manager:
-            self.connection_manager.send_cancel_signal()
+            self.connection_manager.send_skip_signal()
 
     def stop_server(self):
         if self.connection_manager:

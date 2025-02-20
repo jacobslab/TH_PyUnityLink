@@ -15,7 +15,7 @@ class ConnectionManager:
         self.update_ui_callback = update_ui_callback
 
         # Initialize AudioAlert
-        self.audio_alert = AudioAlert(alert_interval=120, cancel_callback=self.send_cancel_signal)
+        self.audio_alert = AudioAlert(alert_interval=120, skip_callback=self.send_skip_signal)
 
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -49,6 +49,9 @@ class ConnectionManager:
         self.live_check_interval = 3
         self.last_live_check_time = None  # Store timestamp for latency check
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+
+        # Message buffer for incoming data from EMA
+        self.buffer = ""
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -115,35 +118,44 @@ class ConnectionManager:
             
             self.log_timestamped(f"Initiated an EMA session with mode: {mode}")
             self.audio_alert.play_audio()
+            self.log_timestamped(f"Start audio alert")
             
         else:
             self.log_timestamped("No client connected!")
         
-        schedule_start(self, mode, self.update_ui_callback)
-
+        next_schedule_time = schedule_start(self, mode, self.update_ui_callback)
+        self.log_timestamped(f"Next EMA session scheduled at: {next_schedule_time}")
     """
     def send_init_bci_signal(self):
         self.connection.send("EMA_Command_INIT_BCI".encode('utf-8'))
         self.log_timestamped("Inti BCI signal sent")
     """
-    def send_cancel_signal(self):
+    def send_skip_signal(self):
         if self.connection:
             self.audio_alert.stop_audio()
+            self.log_timestamped(f"Stop audio alert")
             self.connection.sendall("EMA_SKIP".encode('utf-8'))
-            self.log_timestamped("EMA session skipped on Unity client")
+            self.log_timestamped("EMA session comfirmed or cancelled")
         else:
             self.log_timestamped("No client connected!")
 
     def process_received_message(self, message):
-        if message == "EMA_ACK":
-            self.audio_alert.stop_audio()
-            self.log_timestamped(f"EMA_ACK: First 2 questions completed.")
-        elif message == "LIVE_CHECK_ACK":
-            latency_ms = (time.time() - self.last_live_check_time) * 1000
-            self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
-        else:
-            self.log_timestamped(f"Received message from iPad EMA: {message}")
-            self.log_ema_message(message)
+        self.buffer += message
+        while "\n" in self.buffer:  # Split at newlines
+            message_line, self.buffer = self.buffer.split("\n", 1)
+            message_line = message_line.strip()  # Remove any leading/trailing spaces or newlines
+
+            if message_line == "EMA_Session_ACK":
+                self.audio_alert.stop_audio()
+                self.log_timestamped(f"Stop audio alert")
+                self.log_timestamped(f"EMA_ACK: First 2 questions completed.")
+            elif message_line == "LIVE_CHECK_ACK":
+                latency_ms = (time.time() - self.last_live_check_time) * 1000
+                self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
+            elif message_line.startswith("BCI_Sync"):
+                self.process_bci_sync_message(message_line)
+            else:
+                self.log_ema_message(message_line)
 
     # Periodically sends a live check signal
     def live_check_loop(self):
@@ -165,19 +177,7 @@ class ConnectionManager:
             self.connection.close()
             self.connection = None
             self.live_check_running = False
-    """
-    def send_bci_command(self, command):
-        try:
-            bci_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            bci_socket.connect(("192.168.0.101", 4000))
-            self.log_timestamped("Connected to BCI2000")
-            bci_socket.sendall(command.encode('utf-8'))
-            self.log_timestamped(f"Sent command to BCI2000: {command}")
-            bci_socket.close()
-        except Exception as e:
-            self.log_timestamped(f"Error sending command to BCI2000: {e}")
-    """
-    
+
     def get_next_start_time(self):
         return self.next_start_time
 
@@ -206,4 +206,7 @@ class ConnectionManager:
             self.log_timestamped("Warning: Attempted to log EMA message before EMA session started.")
             return  
         with open(self.ema_log_file, "a") as log_file:
-            log_file.write(message + "\n")
+            log_file.write(message.strip() + "\n")
+    
+    def process_bci_sync_message(self, message):
+        self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
