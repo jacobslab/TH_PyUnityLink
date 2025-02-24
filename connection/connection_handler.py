@@ -157,7 +157,7 @@ class ConnectionManager:
                 latency_ms = (time.time() - self.last_live_check_time) * 1000
                 self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
             elif message_line.startswith("BCI_Sync:"):
-                self.bci_handler.sync_bci_event(message_line)
+                self.bci_handler.process_bci_data(message_line)
                 self.log_bci_sync_message(message_line)
             else:
                 self.log_ema_message(message_line)
