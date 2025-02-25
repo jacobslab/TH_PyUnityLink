@@ -21,8 +21,8 @@ class ConnectionManager:
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server.bind(('localhost', 4100))
-        #self.server.bind(('192.168.1.164', 4100))
+        #self.server.bind(('localhost', 4100))
+        self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
         self.server.listen(1)
 
