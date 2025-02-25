@@ -4,13 +4,12 @@ from PIL import Image, ImageTk
 import time
 
 class QRCodeDisplay:
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, parent):
+        self.root = tk.Toplevel(parent)  # Create a separate window
         self.root.title("QR Code Display")
         self.root.state("zoomed")  # Start in maximized mode
-        
         self.root.configure(bg="white")  
-        
+
         # Frame to hold QR code and handle resizing
         self.frame = tk.Frame(self.root, bg="white")
         self.frame.pack(fill=tk.BOTH, expand=True)
@@ -18,6 +17,8 @@ class QRCodeDisplay:
         # Create label to hold QR code
         self.label = tk.Label(self.frame, bg="white")
         self.label.pack()
+
+        self.center_window()
 
         # Bind resizing feature
         self.root.bind("<Configure>", self.update_qr)
@@ -53,9 +54,12 @@ class QRCodeDisplay:
         
         self.label.place(x=(screen_width - qr_size) // 2,
                          y=(screen_height - qr_size) // 2)
-
-# Test
-if __name__ == "__main__":
-    root = tk.Tk()
-    qr_display = QRCodeDisplay(root)
-    root.mainloop()
+    
+    def center_window(self, width=600, height=600):
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        self.root.geometry(f"{width}x{height}+{x}+{y}")

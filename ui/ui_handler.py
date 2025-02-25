@@ -1,13 +1,15 @@
 import tkinter as tk
 from datetime import datetime
+from utils.qrcode.qrcode_display import QRCodeDisplay
 
 class UI:
-    def __init__(self):
+    def __init__(self, conn_manager):
         self.root = tk.Tk()
         self.root.title("Treasure Hunt Remote Control")
-        self.connection_manager = None
+        self.connection_manager = conn_manager
+        self.qr_display = QRCodeDisplay(self.root)
 
-        #self.is_bci_enabled = tk.BooleanVar(value=False)
+        self.is_bci_enabled = tk.BooleanVar(value=False)
         self.is_testmode_enabled = tk.BooleanVar(value=True)
 
         self.last_notification_time = None
@@ -48,8 +50,8 @@ class UI:
         bci_frame.pack(pady=10)
 
         # Create a toggle for BCI Connection
-        #bci_toggle = tk.Checkbutton(bci_frame, text="Enable BCI2000", variable=self.is_bci_enabled)
-        #bci_toggle.pack(side=tk.LEFT)
+        bci_toggle = tk.Checkbutton(bci_frame, text="Enable BCI2000", variable=self.is_bci_enabled)
+        bci_toggle.pack(side=tk.LEFT)
 
         # Create a toggle for Test Mode
         test_toggle = tk.Checkbutton(bci_frame, text="Test Mode", variable=self.is_testmode_enabled)
@@ -101,6 +103,11 @@ class UI:
     def send_skip_signal(self):
         if self.connection_manager:
             self.connection_manager.send_skip_signal()
+
+    def update_qr_code(self):
+        """Call QR update method from outside."""
+        if self.qr_display:
+            self.qr_display.update_qr()
 
     def stop_server(self):
         if self.connection_manager:

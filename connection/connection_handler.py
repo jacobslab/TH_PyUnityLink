@@ -9,10 +9,11 @@ from utils.audio.audio_alert import AudioAlert
 from utils.bci2000.bci2000_handler import BCI2000Handler
 
 class ConnectionManager:
-    def __init__(self, update_ui_callback):
+    def __init__(self, ui_instance, update_ui_callback):
         self.server_running = True
         self.connection = None
         self.address = None
+        self.ui = ui_instance
         self.update_ui_callback = update_ui_callback
 
         # Initialize AudioAlert
@@ -21,8 +22,8 @@ class ConnectionManager:
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        #self.server.bind(('localhost', 4100))
-        self.server.bind(('192.168.1.152', 4100))
+        self.server.bind(('localhost', 4100))
+        #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
         self.server.listen(1)
 
@@ -114,6 +115,7 @@ class ConnectionManager:
         if self.connection:
             self.ema_log_file = os.path.join(self.ema_log_dir, f"EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
+            self.ui.update_qr_code()
             # Send the appropriate signal based on the mode
             if mode == "EMA_Test":
                 self.connection.sendall("EMA_START_Test".encode('utf-8'))    
@@ -157,8 +159,11 @@ class ConnectionManager:
                 latency_ms = (time.time() - self.last_live_check_time) * 1000
                 self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
             elif message_line.startswith("BCI_Sync:"):
-                self.bci_handler.process_bci_data(message_line)
-                self.log_bci_sync_message(message_line)
+                if self.ui.is_bci_enabled.get():
+                    self.bci_handler.process_bci_data(message_line)
+                    self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
+                else:
+                    self.log_timestamped(f"BCI data received but ignored (BCI disabled): {message}")
             else:
                 self.log_ema_message(message_line)
 
@@ -212,6 +217,3 @@ class ConnectionManager:
             return  
         with open(self.ema_log_file, "a") as log_file:
             log_file.write(message.strip() + "\n")
-    
-    def log_bci_sync_message(self, message):
-        self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
