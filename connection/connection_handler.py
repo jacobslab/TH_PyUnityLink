@@ -115,8 +115,14 @@ class ConnectionManager:
         self.ui.update_qr_code()
 
         if self.connection:
-            bciSubject = self.bci_handler.get_bci_subjectName() + self.bci_handler.get_bci_subjectID()
-            self.ema_log_file = os.path.join(self.ema_log_dir, f"{bciSubject}_EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+            if self.ui.is_bci_enabled.get():
+                bciSubject = self.bci_handler.get_bci_subjectName() + self.bci_handler.get_bci_subjectID()
+                self.ema_log_file = os.path.join(self.ema_log_dir, f"{bciSubject}_EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+
+                with open(self.ema_log_file, "w") as log_file:
+                    log_file.write(f"New EMA session log started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            else:
+                self.ema_log_file = os.path.join(self.ema_log_dir, f"EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
             # Send the appropriate signal based on the mode
             if self.ui.is_testmode_enabled.get():
