@@ -23,8 +23,8 @@ class ConnectionManager:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         #self.server.bind(('localhost', 4100))
-        #self.server.bind(('192.168.1.152', 4100))
-        self.server.bind(('192.168.0.102', 4100))
+        self.server.bind(('192.168.1.152', 4100))
+        #self.server.bind(('192.168.0.102', 4100))
         self.server.listen(1)
 
         # Get script path
@@ -56,7 +56,7 @@ class ConnectionManager:
         self.buffer = ""
 
         # BCI2000 component
-        self.bci_handler = BCI2000Handler()
+        self.bci_handler = BCI2000Handler(self.log_timestamped)
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -163,9 +163,9 @@ class ConnectionManager:
             elif message_line.startswith("BCI_Sync:"):
                 if self.ui.is_bci_enabled.get():
                     self.bci_handler.process_bci_data(message_line)
-                    self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
+                    #self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
                 else:
-                    self.log_timestamped(f"BCI data received but ignored (BCI disabled): {message}")
+                    #self.log_timestamped(f"BCI data received but ignored (BCI disabled): {message}")
             else:
                 self.log_ema_message(message_line)
 
