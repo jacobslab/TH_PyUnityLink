@@ -27,7 +27,6 @@ class QRCodeDisplay:
         self.root.bind("<Escape>", lambda e: self.root.destroy())
 
     def generate_qr(self, size):
-        """Generate a QR code with the current time and given size."""
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
         qr = qrcode.QRCode(border=1)
         qr.add_data(current_time)
@@ -40,7 +39,6 @@ class QRCodeDisplay:
         return ImageTk.PhotoImage(qr_img)
 
     def update_qr(self, event=None):
-        """Update and center the QR code on window resize."""
         screen_width = self.root.winfo_width()
         screen_height = self.root.winfo_height()
         
