@@ -56,7 +56,7 @@ class ConnectionManager:
         self.buffer = ""
 
         # BCI2000 component
-        self.bci_handler = BCI2000Handler(self.log_timestamped)
+        self.bci_handler = BCI2000Handler(self.log_bci_timestamped)
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -216,6 +216,13 @@ class ConnectionManager:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         server_log_message = f"{timestamp} - {message}"
         print(server_log_message)
+        with open(self.server_log_file, "a") as log_file:
+            log_file.write(server_log_message + "\n")
+
+    def log_bci_timestamped(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        server_log_message = f"{timestamp} - {message}"
+        #print(server_log_message)
         with open(self.server_log_file, "a") as log_file:
             log_file.write(server_log_message + "\n")
     
