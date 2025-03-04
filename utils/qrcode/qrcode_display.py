@@ -45,7 +45,7 @@ class QRCodeDisplay:
         screen_height = self.root.winfo_height()
         
         # Determine the new QR size (square)
-        qr_size = min(screen_width, screen_height) - 100  # Adjust with margin
+        qr_size = max(100, min(screen_width, screen_height) - 100)
         
         # Generate new QR image
         qr_image = self.generate_qr(qr_size)

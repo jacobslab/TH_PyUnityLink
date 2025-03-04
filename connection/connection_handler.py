@@ -111,25 +111,27 @@ class ConnectionManager:
         else:
             self.log_timestamped("No client connected!")
     
-    def send_start_signal(self, mode="EMA_Test"):
+    def send_start_signal(self):
+        self.ui.update_qr_code()
+
         if self.connection:
             self.ema_log_file = os.path.join(self.ema_log_dir, f"EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
-            self.ui.update_qr_code()
             # Send the appropriate signal based on the mode
-            if mode == "EMA_Test":
-                self.connection.sendall("EMA_START_Test".encode('utf-8'))    
-            elif mode == "EMA_Live":
+            if self.ui.is_testmode_enabled.get():
+                self.connection.sendall("EMA_START_Test".encode('utf-8'))
+                self.log_timestamped(f"Initiated an EMA session [Test]")
+            else:
                 self.connection.sendall("EMA_START_Live".encode('utf-8'))
+                self.log_timestamped(f"Initiated an EMA session [Live]")
             
-            self.log_timestamped(f"Initiated an EMA session with mode: {mode}")
             self.audio_alert.play_audio()
-            self.log_timestamped(f"Start audio alert")
+            self.log_timestamped(f"Audio alert - Start")
             
         else:
             self.log_timestamped("No client connected!")
         
-        next_schedule_time = schedule_start(self, mode, self.update_ui_callback)
+        next_schedule_time = schedule_start(self, self.update_ui_callback)
         self.log_timestamped(f"Next EMA session scheduled at: {next_schedule_time}")
     """
     def send_init_bci_signal(self):
@@ -139,7 +141,7 @@ class ConnectionManager:
     def send_skip_signal(self):
         if self.connection:
             self.audio_alert.stop_audio()
-            self.log_timestamped(f"Stop audio alert")
+            self.log_timestamped(f"Audio alert - Stop")
             self.connection.sendall("EMA_SKIP".encode('utf-8'))
             self.log_timestamped("EMA session comfirmed or cancelled")
         else:

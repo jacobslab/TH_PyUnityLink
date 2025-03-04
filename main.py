@@ -8,5 +8,3 @@ if __name__ == '__main__':
     conn_manager = ConnectionManager(ui, ui.update_next_notification_time)
     ui.connection_manager = conn_manager  # Assign it after creation
     ui.start()
-    
-    ui.start()

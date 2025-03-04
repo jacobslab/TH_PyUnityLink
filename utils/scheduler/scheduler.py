@@ -16,11 +16,11 @@ def get_next_start_time():
     elif next_start_time.hour < 9:
         next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0)
 
-    #next_start_time = datetime.now() + timedelta(seconds=10)
+    next_start_time = datetime.now() + timedelta(seconds=15)
     
     return next_start_time
 
-def schedule_start(connection_manager, mode, update_ui_callback):
+def schedule_start(connection_manager, update_ui_callback):
     next_start_time = get_next_start_time()
     delay_seconds = (next_start_time - datetime.now()).total_seconds()
 
@@ -36,6 +36,6 @@ def schedule_start(connection_manager, mode, update_ui_callback):
     #    threading.Timer(init_delay_seconds, connection_manager.send_init_bci_signal).start()
 
     # Schedule sending the start signal after the calculated delay
-    threading.Timer(delay_seconds, connection_manager.send_start_signal, args=[mode]).start()
+    threading.Timer(delay_seconds, connection_manager.send_start_signal).start()
     
     return next_start_time

@@ -76,17 +76,18 @@ class UI:
 
     def send_start_signal(self):
         if self.connection_manager:
+            """
             # Determine mode based on BCI and Test Mode toggles
             if self.is_testmode_enabled.get():
                 mode = "EMA_Test"
             else:
                 mode = "EMA_Live"
-            
+            """
             current_time = datetime.now()
             self.last_start_label.config(text=f"Session Start: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
             # Call send_start_signal with the determined mode
-            self.connection_manager.send_start_signal(mode)
+            self.connection_manager.send_start_signal()
 
 
     def update_last_notification_time(self, current_time):
