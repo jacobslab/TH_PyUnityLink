@@ -63,6 +63,26 @@ class BCI2000Handler:
         except Exception as e:
             self.log_bci_message(f"Failed to sync event: {e}")
             self.handle_disconnection()
+    
+    def get_bci_subjectName(self):
+        self.connect_bci2000()
+        
+        try:
+            name = self.bci.GetParameter("SubjectName")
+            return name if name else "<BCI_SubjectName>"
+        except Exception:
+            self.log_bci_message("BCI2000 not connected at EMA log file initialization")
+            return "<BCI_SubjectName>"
+    
+    def get_bci_subjectID(self):
+        self.connect_bci2000()
+
+        try:
+            id = self.bci.GetParameter("SubjectSession")
+            return id if id else "<BCI_SubjectSession>"
+        except Exception:
+            self.log_bci_message("BCI2000 not connected at EMA log file initialization")
+            return "<BCI_SubjectSession>"
 
     def stop(self):
         self.stop_monitor.set()
