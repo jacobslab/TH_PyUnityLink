@@ -4,7 +4,7 @@ import select
 import time
 import os
 from datetime import datetime
-from utils.scheduler.scheduler import get_next_start_time, schedule_start
+from utils.scheduler.scheduler import Scheduler
 from utils.audio.audio_alert import AudioAlert
 from utils.bci2000.bci2000_handler import BCI2000Handler
 
@@ -16,6 +16,9 @@ class ConnectionManager:
         self.ui = ui_instance
         self.update_ui_callback = update_ui_callback
 
+        # Initialize Scheduler
+        self.scheduler = Scheduler(self, update_ui_callback)
+
         # Initialize AudioAlert
         self.audio_alert = AudioAlert(alert_interval=120, skip_callback=self.send_skip_signal)
 
@@ -23,8 +26,8 @@ class ConnectionManager:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         #self.server.bind(('localhost', 4100))
-        self.server.bind(('192.168.1.152', 4100))
-        #self.server.bind(('192.168.0.102', 4100))
+        #self.server.bind(('192.168.1.152', 4100))
+        self.server.bind(('192.168.0.101', 4100))
         self.server.listen(1)
 
         # Get script path
@@ -115,6 +118,7 @@ class ConnectionManager:
         self.ui.update_qr_code()
 
         if self.connection:
+            # Get log file name from BCI2000
             if self.ui.is_bci_enabled.get():
                 bciSubject = self.bci_handler.get_bci_subjectName() + self.bci_handler.get_bci_subjectID()
                 self.ema_log_file = os.path.join(self.ema_log_dir, f"{bciSubject}_EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
@@ -138,7 +142,7 @@ class ConnectionManager:
         else:
             self.log_timestamped("No client connected!")
         
-        next_schedule_time = schedule_start(self, self.update_ui_callback)
+        next_schedule_time = self.scheduler.schedule_start()
         self.log_timestamped(f"Next EMA session scheduled at: {next_schedule_time}")
     """
     def send_init_bci_signal(self):
