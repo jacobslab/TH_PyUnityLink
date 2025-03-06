@@ -21,7 +21,10 @@ class BCI2000Handler:
         try:
             self.bci.Connect()
             self.connected = True
-            self.log_bci_message("Connected to BCI2000")
+            if not self.bci.GetParameter("SubjectName"):
+                self.log_bci_message("Attempting to connect...")
+            else:
+                self.log_bci_message("Connected to BCI2000")
         except Exception as e:
             self.log_bci_message(f"Failed to connect to BCI2000: {e}")
 
