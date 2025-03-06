@@ -22,7 +22,7 @@ class Scheduler:
         elif next_start_time.hour < 9:
             next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0)
 
-        next_start_time = datetime.now() + timedelta(seconds=15)
+        next_start_time = datetime.now() + timedelta(hours=1)
         
         return next_start_time
 
