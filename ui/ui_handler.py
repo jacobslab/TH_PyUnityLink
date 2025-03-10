@@ -86,8 +86,8 @@ class UI:
             current_time = datetime.now()
             self.last_start_label.config(text=f"Session Start: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
-            # Call send_start_signal with the determined mode
-            self.connection_manager.send_start_signal()
+            next_schedule_time = self.connection_manager.scheduler.schedule_start()
+            self.update_next_notification_time(next_schedule_time)
 
 
     def update_last_notification_time(self, current_time):

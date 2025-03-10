@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from utils.scheduler.scheduler import Scheduler
 from utils.audio.audio_alert import AudioAlert
-from utils.bci2000.bci2000_handler import BCI2000Handler
+#from utils.bci2000.bci2000_handler import BCI2000Handler
 
 class ConnectionManager:
     def __init__(self, ui_instance, update_ui_callback):
@@ -25,8 +25,8 @@ class ConnectionManager:
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        #self.server.bind(('localhost', 4100))
-        self.server.bind(('192.168.1.152', 4100))
+        self.server.bind(('localhost', 4100))
+        #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
         self.server.listen(1)
 
@@ -59,7 +59,7 @@ class ConnectionManager:
         self.buffer = ""
 
         # BCI2000 component
-        self.bci_handler = BCI2000Handler(self.log_bci_timestamped)
+        #self.bci_handler = BCI2000Handler(self.log_bci_timestamped)
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -144,11 +144,7 @@ class ConnectionManager:
         
         next_schedule_time = self.scheduler.schedule_start()
         self.log_timestamped(f"Next EMA session scheduled at: {next_schedule_time}")
-    """
-    def send_init_bci_signal(self):
-        self.connection.send("EMA_Command_INIT_BCI".encode('utf-8'))
-        self.log_timestamped("Inti BCI signal sent")
-    """
+
     def send_skip_signal(self):
         if self.connection:
             self.audio_alert.stop_audio()
@@ -173,9 +169,9 @@ class ConnectionManager:
                 self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
             elif message_line.startswith("BCI_Sync:"):
                 if self.ui.is_bci_enabled.get():
-                    self.bci_handler.process_bci_data(message_line)
+                    #self.bci_handler.process_bci_data(message_line)
                     #self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
-                else:
+                #else:
                     self.log_timestamped(f"BCI data received but ignored (BCI disabled): {message}")
             else:
                 self.log_ema_message(message_line)

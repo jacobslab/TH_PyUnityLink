@@ -7,22 +7,38 @@ class Scheduler:
         self.connection_manager = connection_manager
         self.update_ui_callback = update_ui_callback
         self.timer = None
+        self.is_first_session = True
 
     def get_next_start_time(self):
-        """Calculates the next start time within the 9am-9pm range, with next-day rescheduling if needed."""
-        min_delay = 90
-        max_delay = 150
-        delay = random.randint(min_delay, max_delay)
-        next_start_time = datetime.now() + timedelta(minutes=delay)
+        """
+        Calculates the start time of the next EMA session.
+        
+        - If the EMA session is the first one in the study,
+        get a random time within the 10-60 min range after the initiation.
+        - The following next EMA sessions is scheduled within the 90-150 min range.
+        - Sessions are only scheduled between 9am-9pm of the day
+        - Allow next-day rescheduling if needed.
+        
+        """
+        if self.is_first_session:
+            delay = random.randint(10, 70)
+            self.is_first_session = False
+        else:
+            min_delay = 90
+            max_delay = 150
+            delay = random.randint(min_delay, max_delay)
+        
+        next_start_time = datetime.now()
 
         # Check if it exceeds 9pm; if so, schedule for the next day at 9am with a new random delay
         if next_start_time.hour >= 21:
-            delay_next_day = random.randint(0, min_delay)
-            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1) + timedelta(minutes=delay_next_day)
+            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1) + timedelta(minutes=delay)
         elif next_start_time.hour < 9:
-            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0)
+            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(minutes=delay)
+        else:
+            next_start_time += timedelta(minutes=delay)
 
-        next_start_time = datetime.now() + timedelta(hours=1)
+        #next_start_time = datetime.now() + timedelta(seconds=delay)
         
         return next_start_time
 
