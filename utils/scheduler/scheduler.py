@@ -29,6 +29,7 @@ class Scheduler:
             delay = random.randint(min_delay, max_delay)
         
         next_start_time = datetime.now()
+        
 
         # Check if it exceeds 9pm; if so, schedule for the next day at 9am with a new random delay
         if next_start_time.hour >= 21:
@@ -61,5 +62,7 @@ class Scheduler:
         # Schedule sending the start signal after the calculated delay
         self.timer = threading.Timer(delay_seconds, self.connection_manager.send_start_signal)
         self.timer.start()
+
+        self.connection_manager.log_timestamped(f"Next EMA session scheduled at: {next_start_time}")
 
         return next_start_time

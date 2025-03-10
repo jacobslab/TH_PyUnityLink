@@ -142,8 +142,9 @@ class ConnectionManager:
         else:
             self.log_timestamped("No client connected!")
         
-        next_schedule_time = self.scheduler.schedule_start()
-        self.log_timestamped(f"Next EMA session scheduled at: {next_schedule_time}")
+        self.scheduler.schedule_start()
+        #next_schedule_time = 
+        #self.log_timestamped(f"Next EMA session scheduled at: {next_schedule_time}")
 
     def send_skip_signal(self):
         if self.connection:
