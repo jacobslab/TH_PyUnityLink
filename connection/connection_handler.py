@@ -53,7 +53,7 @@ class ConnectionManager:
         self.live_check_running = False
         self.live_check_interval = 3
         self.last_live_check_time = None  # Store timestamp for latency check
-        self.last_live_check_ack_time = None   # Track the lastest LIVE_CHECK_ACK received time
+        self.last_live_check_ack_time = time.time()   # Track the lastest LIVE_CHECK_ACK received time
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
 
         # Message buffer for incoming data from EMA
@@ -64,40 +64,45 @@ class ConnectionManager:
 
     # accept new connections and handle disconnections
     def accept_connections(self):
-        try:
-            while self.server_running:
-                readable, _, _ = select.select([self.server], [], [], 0.1)
-                if self.server in readable:
-                    if self.connection is None:
-                        self.log_timestamped("Waiting for a new client to connect...")
-                        self.connection, self.address = self.server.accept()
-                        self.log_timestamped(f"Connected to {self.address}")
-                        self.connection.sendall("Server Initiated".encode('utf-8'))
-                        self.log_timestamped("Sent INIT message to Unity client")
-                        
-                        # Start live check once a connection is established
-                        if not self.live_check_thread.is_alive():
-                            self.live_check_running = True
-                            self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
-                            self.live_check_thread.start()          
-                    else:
+        while self.server_running:
+            try:
+                while self.server_running:
+                    readable, _, _ = select.select([self.server], [], [], 0.1)
+                    if self.server in readable:
+                        if self.connection is None:
+                            self.log_timestamped("Waiting for a new client to connect...")
+                            self.connection, self.address = self.server.accept()
+                            self.log_timestamped(f"Connected to {self.address}")
+                            self.connection.sendall("Server Initiated".encode('utf-8'))
+                            self.log_timestamped("Sent INIT message to Unity client")
+                            
+                            self.last_live_check_ack_time = time.time()
+
+                            # Start live check once a connection is established
+                            if not self.live_check_thread.is_alive():
+                                self.live_check_running = True
+                                self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+                                self.live_check_thread.start()          
+                        else:
+                            try:
+                                data = self.connection.recv(1024)
+                                if not data:
+                                    self.handle_disconnection()
+                            except (ConnectionResetError, BrokenPipeError):
+                                self.handle_disconnection()
+                    if self.connection:
                         try:
-                            data = self.connection.recv(1024)
-                            if not data:
+                            data = self.connection.recv(4096).decode('utf-8')
+                            if data:
+                                self.process_received_message(data)
+                            else:
                                 self.handle_disconnection()
                         except (ConnectionResetError, BrokenPipeError):
                             self.handle_disconnection()
-                if self.connection:
-                    try:
-                        data = self.connection.recv(4096).decode('utf-8')
-                        if data:
-                            self.process_received_message(data)
-                        else:
-                            self.handle_disconnection()
-                    except (ConnectionResetError, BrokenPipeError):
-                        self.handle_disconnection()
-        except OSError:
-            self.log_timestamped("Server socket closed, stopping accept_connections.")
+            except OSError:
+                self.log_timestamped("Server socket closed on OSError.")
+                time.sleep(1)
+                self.log_timestamped("Server waiting for new connection")
 
     # send messages to unity
     def send_message(self, message):
@@ -182,7 +187,7 @@ class ConnectionManager:
 
     # Periodically sends a live check signal
     def live_check_loop(self):
-        timeout_threshold = 600  # Time in seconds to wait for ACK before assuming disconnection
+        timeout_threshold = 10  # Time in seconds to wait for ACK before assuming disconnection
 
         if self.server_running and self.live_check_running and self.connection:
             current_time = time.time()

@@ -21,7 +21,8 @@ class Scheduler:
         
         """
         if self.is_first_session:
-            delay = random.randint(10, 70)
+            #delay = random.randint(10, 70)
+            delay = 0
             self.is_first_session = False
         else:
             min_delay = 90
