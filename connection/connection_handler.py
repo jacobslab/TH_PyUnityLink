@@ -53,6 +53,7 @@ class ConnectionManager:
         self.live_check_running = False
         self.live_check_interval = 3
         self.last_live_check_time = None  # Store timestamp for latency check
+        self.last_live_check_ack_time = None   # Track the lastest LIVE_CHECK_ACK received time
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
 
         # Message buffer for incoming data from EMA
@@ -168,6 +169,8 @@ class ConnectionManager:
             elif message_line == "LIVE_CHECK_ACK":
                 latency_ms = (time.time() - self.last_live_check_time) * 1000
                 self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
+
+                self.last_live_check_ack_time = time.time()
             elif message_line.startswith("BCI_Sync:"):
                 if self.ui.is_bci_enabled.get():
                     #self.bci_handler.process_bci_data(message_line)
@@ -179,7 +182,17 @@ class ConnectionManager:
 
     # Periodically sends a live check signal
     def live_check_loop(self):
+        timeout_threshold = 600  # Time in seconds to wait for ACK before assuming disconnection
+
         if self.server_running and self.live_check_running and self.connection:
+            current_time = time.time()
+
+            # Check if the last LIVE_CHECK_ACK was received within the timeout threshold
+            if (current_time - self.last_live_check_ack_time) > timeout_threshold:
+                self.log_timestamped("No LIVE_CHECK_ACK received in time, assuming iPad disconnected.")
+                self.handle_disconnection()
+                return  # Stop sending live checks
+            
             try:
                 self.last_live_check_time = time.time()
                 self.connection.sendall("LIVE_CHECK".encode('utf-8'))
