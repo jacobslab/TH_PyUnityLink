@@ -1,6 +1,7 @@
 import sys
 import threading
 import time
+from datetime import datetime, timedelta
 
 sys.path.append('C:\\BCI2000.x64\\prog')
 from BCI2000Remote import BCI2000Remote
@@ -13,6 +14,8 @@ class BCI2000Handler:
         self.monitor_thread = threading.Thread(target=self.monitor_connection, daemon=True)
         self.monitor_thread.start()
         self.log_bci_message = log_bci_message  # Use ConnectionManager's logging function
+
+        self.schedule_disconnect_reconnect()
 
     def connect_bci2000(self):
         if self.connected:
@@ -27,6 +30,12 @@ class BCI2000Handler:
                 self.log_bci_message("Connected to BCI2000")
         except Exception as e:
             self.log_bci_message(f"Failed to connect to BCI2000: {e}")
+    
+    def disconnect_bci2000(self):
+        if self.connected:
+            self.bci.Disconnect()
+            self.connected = False
+            self.log_bci_message("Disconnected from BCI2000")
 
     def handle_disconnection(self):
         if self.connected:
@@ -86,6 +95,27 @@ class BCI2000Handler:
         except Exception:
             self.log_bci_message("BCI2000 not connected at EMA log file initialization")
             return "<BCI_SubjectSession>"
+        
+    def schedule_disconnect_reconnect(self):
+        # Schedule disconnect at 9:01 PM
+        self.schedule_task(self.disconnect_bci2000, "21:01")
+
+        # Schedule reconnect at 8:59 AM
+        self.schedule_task(self.connect_bci2000, "08:59")
+
+    def schedule_task(self, task, target_time):
+        # Calculate the time difference to the target time
+        target_hour, target_minute = map(int, target_time.split(":"))
+        now = datetime.now()
+        target_time = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+
+        if target_time < now:
+            target_time += timedelta(days=1)  # Schedule for the next day
+
+        delay = (target_time - now).total_seconds()
+
+        # Schedule the task using a timer
+        threading.Timer(delay, task).start()
 
     def stop(self):
         self.stop_monitor.set()

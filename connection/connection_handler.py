@@ -64,6 +64,7 @@ class ConnectionManager:
 
     # accept new connections and handle disconnections
     def accept_connections(self):
+        # TODO: handle reconnect on server side
         while self.server_running:
             try:
                 while self.server_running:
@@ -187,7 +188,7 @@ class ConnectionManager:
 
     # Periodically sends a live check signal
     def live_check_loop(self):
-        timeout_threshold = 10  # Time in seconds to wait for ACK before assuming disconnection
+        timeout_threshold = 100  # Time in seconds to wait for ACK before assuming disconnection
 
         if self.server_running and self.live_check_running and self.connection:
             current_time = time.time()
@@ -232,14 +233,14 @@ class ConnectionManager:
 
     # Log and save server messages with timestamp
     def log_timestamped(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
         server_log_message = f"{timestamp} - {message}"
         print(server_log_message)
         with open(self.server_log_file, "a") as log_file:
             log_file.write(server_log_message + "\n")
 
     def log_bci_timestamped(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
         server_log_message = f"{timestamp} - {message}"
         #print(server_log_message)
         with open(self.server_log_file, "a") as log_file:

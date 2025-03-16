@@ -29,18 +29,19 @@ class Scheduler:
             max_delay = 150
             delay = random.randint(min_delay, max_delay)
         
-        next_start_time = datetime.now()
-        
+        next_start_time = datetime.now() + timedelta(minutes=delay)
 
         # Check if it exceeds 9pm; if so, schedule for the next day at 9am with a new random delay
         if next_start_time.hour >= 21:
-            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1) + timedelta(minutes=delay)
-        elif next_start_time.hour < 9:
-            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(minutes=delay)
-        else:
+            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
             next_start_time += timedelta(minutes=delay)
+        elif next_start_time.hour < 9:
+            next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0)
+            next_start_time += timedelta(minutes=delay)
+        else:
+            next_start_time = next_start_time
 
-        #next_start_time = datetime.now() + timedelta(seconds=delay)
+        next_start_time = datetime.now() + timedelta(seconds=20)
         
         return next_start_time
 
