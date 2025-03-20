@@ -9,6 +9,7 @@ from utils.audio.audio_alert import AudioAlert
 #from utils.bci2000.bci2000_handler import BCI2000Handler
 
 class ConnectionManager:
+
     def __init__(self, ui_instance, update_ui_callback):
         self.server_running = True
         self.connection = None
@@ -25,9 +26,10 @@ class ConnectionManager:
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server.bind(('localhost', 4100))
+        #self.server.bind(('localhost', 4100))
         #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
+        self.server.bind(('192.168.1.164', 4100))
         self.server.listen(1)
 
         # Get script path
@@ -52,6 +54,9 @@ class ConnectionManager:
         # Live check thread
         self.live_check_running = False
         self.live_check_interval = 3
+        self.liveCheckIdCounter = 0
+        self.liveCheckIdLimit = 1000
+        self.last_live_check_id = None 
         self.last_live_check_time = None  # Store timestamp for latency check
         self.last_live_check_ack_time = time.time()   # Track the lastest LIVE_CHECK_ACK received time
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
@@ -65,45 +70,45 @@ class ConnectionManager:
     # accept new connections and handle disconnections
     def accept_connections(self):
         # TODO: handle reconnect on server side
-        while self.server_running:
-            try:
-                while self.server_running:
-                    readable, _, _ = select.select([self.server], [], [], 0.1)
-                    if self.server in readable:
-                        if self.connection is None:
-                            self.log_timestamped("Waiting for a new client to connect...")
-                            self.connection, self.address = self.server.accept()
-                            self.log_timestamped(f"Connected to {self.address}")
-                            self.connection.sendall("Server Initiated".encode('utf-8'))
-                            self.log_timestamped("Sent INIT message to Unity client")
-                            
-                            self.last_live_check_ack_time = time.time()
+    
+        try:
+            while self.server_running:
+                readable, _, _ = select.select([self.server], [], [], 0.1)
+                if self.server in readable:
+                    if self.connection is None:
+                        self.log_timestamped("Waiting for a new client to connect...")
+                        self.connection, self.address = self.server.accept()
+                        self.log_timestamped(f"Connected to {self.address}")
+                        self.connection.sendall("Server Initiated".encode('utf-8'))
+                        self.log_timestamped("Sent INIT message to Unity client")
+                        
+                        self.last_live_check_ack_time = time.time()
 
-                            # Start live check once a connection is established
-                            if not self.live_check_thread.is_alive():
-                                self.live_check_running = True
-                                self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
-                                self.live_check_thread.start()          
-                        else:
-                            try:
-                                data = self.connection.recv(1024)
-                                if not data:
-                                    self.handle_disconnection()
-                            except (ConnectionResetError, BrokenPipeError):
-                                self.handle_disconnection()
-                    if self.connection:
+                        # Start live check once a connection is established
+                        if not self.live_check_thread.is_alive():
+                            self.live_check_running = True
+                            self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+                            self.live_check_thread.start()          
+                    else:
                         try:
-                            data = self.connection.recv(4096).decode('utf-8')
-                            if data:
-                                self.process_received_message(data)
-                            else:
+                            data = self.connection.recv(1024)
+                            if not data:
                                 self.handle_disconnection()
                         except (ConnectionResetError, BrokenPipeError):
                             self.handle_disconnection()
-            except OSError:
-                self.log_timestamped("Server socket closed on OSError.")
-                time.sleep(1)
-                self.log_timestamped("Server waiting for new connection")
+                if self.connection:
+                    try:
+                        data = self.connection.recv(4096).decode('utf-8')
+                        if data:
+                            self.process_received_message(data)
+                        else:
+                            self.handle_disconnection()
+                    except (ConnectionResetError, BrokenPipeError):
+                        self.handle_disconnection()
+        except OSError:
+            self.log_timestamped("Server socket closed on OSError.")
+            time.sleep(1)
+            self.log_timestamped("Server waiting for new connection")
 
     # send messages to unity
     def send_message(self, message):
@@ -113,11 +118,11 @@ class ConnectionManager:
         else:
             self.log_timestamped("No client connected!")
 
-    # send the "View" signal to unity
-    def send_view_signal(self):
+    # send the "Quit" signal to unity
+    def send_quit_signal(self):
         if self.connection:
-            self.connection.sendall("EMA_INFO".encode('utf-8'))
-            self.log_timestamped("Show Info on Unity client")
+            self.connection.sendall("EMA_QUIT".encode('utf-8'))
+            self.log_timestamped("EMA Session Quit on PyUnityLink Request")
         else:
             self.log_timestamped("No client connected!")
     
@@ -171,12 +176,21 @@ class ConnectionManager:
             if message_line == "EMA_Session_ACK":
                 self.audio_alert.stop_audio()
                 self.log_timestamped(f"Stop audio alert")
-                self.log_timestamped(f"EMA_ACK: First 2 questions completed.")
-            elif message_line == "LIVE_CHECK_ACK":
-                latency_ms = (time.time() - self.last_live_check_time) * 1000
-                self.log_timestamped(f"Received LIVE_CHECK_ACK from iPad. Latency: {latency_ms:.3f} ms")
-
-                self.last_live_check_ack_time = time.time()
+                self.log_timestamped(f"EMA_ACK: First 3 questions completed.")
+            elif message_line.startswith("LIVE_CHECK_ACK"):
+                # Extract the live check ID from the response
+                message_parts = message_line.split(":")
+                if len(message_parts) > 1:
+                    ack_id = message_parts[1].replace("LIVE_CHECK", "").strip()
+                    # Check if the ACK matches the last sent ID
+                    if ack_id == self.last_live_check_id:
+                        latency_ms = (time.time() - self.last_live_check_time) * 1000
+                        self.log_timestamped(f"Received LIVE_CHECK_ACK:{ack_id} - Latency: {latency_ms:.3f} ms")
+                        self.last_live_check_ack_time = time.time()
+                    else:
+                        self.log_timestamped(f"Received LIVE_CHECK_ACK with unexpected ID: {ack_id}")
+                else:
+                    self.log_timestamped(f"Invalid LIVE_CHECK_ACK received")
             elif message_line.startswith("BCI_Sync:"):
                 if self.ui.is_bci_enabled.get():
                     #self.bci_handler.process_bci_data(message_line)
@@ -199,10 +213,17 @@ class ConnectionManager:
                 self.handle_disconnection()
                 return  # Stop sending live checks
             
+            # Generate a unique ID for the live check
+            self.last_live_check_id = str(self.liveCheckIdCounter)
+            live_check_message = f"LIVE_CHECK:{self.last_live_check_id}"
+
             try:
                 self.last_live_check_time = time.time()
-                self.connection.sendall("LIVE_CHECK".encode('utf-8'))
-                self.log_timestamped("Sent LIVE_CHECK to iPad")
+                self.connection.sendall(live_check_message.encode('utf-8'))
+                self.log_timestamped(f"Sent LIVE_CHECK to iPad:{self.last_live_check_id}")
+
+                # Increment the counter and reset it if needed
+                self.liveCheckIdCounter = (self.liveCheckIdCounter + 1) % self.liveCheckIdLimit
             except Exception as e:
                 self.log_timestamped(f"Error sending live check: {e}")
                 

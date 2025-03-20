@@ -33,10 +33,6 @@ class UI:
         self.next_start_label = tk.Label(self.root, text="Next Notification: N/A")
         self.next_start_label.pack(pady=10)
 
-        # button for "VIEW" signal
-        view_button = tk.Button(self.root, text="Show INFO on iPad", command=self.send_view_signal)
-        view_button.pack(pady=10)
-
         # button for "START" signal
         start_button = tk.Button(self.root, text="Start EMA Sequence", command=self.send_start_signal)
         start_button.pack(padx=5)
@@ -44,6 +40,10 @@ class UI:
         # button for "CANCEL" signal
         cancel_button = tk.Button(self.root, text="Skip Current EMA", command=self.send_skip_signal)
         cancel_button.pack(padx=5)
+
+        # button for "QUIT" signal
+        view_button = tk.Button(self.root, text="Quit EMA Session", command=self.send_quit_signal)
+        view_button.pack(pady=10)
 
         # Create a frame for the BCI toggle and label
         bci_frame = tk.Frame(self.root)
@@ -70,9 +70,9 @@ class UI:
             self.connection_manager.send_message(message)
             self.entry.delete(0, tk.END)
 
-    def send_view_signal(self):
+    def send_quit_signal(self):
         if self.connection_manager:
-            self.connection_manager.send_view_signal()
+            self.connection_manager.send_quit_signal()
 
     def send_start_signal(self):
         if self.connection_manager:
