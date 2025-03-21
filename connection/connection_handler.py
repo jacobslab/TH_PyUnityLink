@@ -26,6 +26,7 @@ class ConnectionManager:
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Disable Nagle's Algorithm
         #self.server.bind(('localhost', 4100))
         #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
@@ -60,6 +61,11 @@ class ConnectionManager:
         self.last_live_check_time = None  # Store timestamp for latency check
         self.last_live_check_ack_time = time.time()   # Track the lastest LIVE_CHECK_ACK received time
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+
+        # Battery check thread
+        self.battery_check_interval = 10  # 30 minutes in seconds
+        self.battery_check_thread = threading.Thread(target=self.battery_check_loop, daemon=True)
+        self.battery_check_thread.start()
 
         # Message buffer for incoming data from EMA
         self.buffer = ""
@@ -119,13 +125,30 @@ class ConnectionManager:
             self.log_timestamped("No client connected!")
 
     # send the "Quit" signal to unity
+    """
     def send_quit_signal(self):
         if self.connection:
             self.connection.sendall("EMA_QUIT".encode('utf-8'))
             self.log_timestamped("EMA Session Quit on PyUnityLink Request")
         else:
             self.log_timestamped("No client connected!")
-    
+    """
+
+    def check_battery(self):
+        if self.connection:
+            self.connection.sendall("BATTERY".encode('utf-8'))
+            self.log_timestamped("Checking iPad Battery Status")
+        else:
+            self.log_timestamped("No client connected!")
+
+    def battery_check_loop(self):
+        while self.server_running:
+            time.sleep(self.battery_check_interval)
+            if self.connection:
+                self.check_battery()
+            else:
+                self.log_timestamped("Battery check skipped: No client connected.")
+
     def send_start_signal(self):
         self.ui.update_qr_code()
 
@@ -177,6 +200,14 @@ class ConnectionManager:
                 self.audio_alert.stop_audio()
                 self.log_timestamped(f"Stop audio alert")
                 self.log_timestamped(f"EMA_ACK: First 3 questions completed.")
+            elif message_line.startswith("BATTERY"):
+                message_parts = message_line.split(":")
+                if len(message_parts) >= 3:
+                    battery_level = message_parts[1].strip()
+                    battery_status = message_parts[2].strip()
+                    self.log_timestamped(f"Battery Level: {battery_level}, Status: {battery_status}")
+                    if self.ui:
+                        self.ui.battery_level_label.config(text=f"Battery: {battery_level}% ({battery_status})")
             elif message_line.startswith("LIVE_CHECK_ACK"):
                 # Extract the live check ID from the response
                 message_parts = message_line.split(":")
@@ -220,6 +251,7 @@ class ConnectionManager:
             try:
                 self.last_live_check_time = time.time()
                 self.connection.sendall(live_check_message.encode('utf-8'))
+                time.sleep(0.1)
                 self.log_timestamped(f"Sent LIVE_CHECK to iPad:{self.last_live_check_id}")
 
                 # Increment the counter and reset it if needed

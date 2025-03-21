@@ -41,9 +41,13 @@ class UI:
         cancel_button = tk.Button(self.root, text="Skip Current EMA", command=self.send_skip_signal)
         cancel_button.pack(padx=5)
 
-        # button for "QUIT" signal
-        view_button = tk.Button(self.root, text="Quit EMA Session", command=self.send_quit_signal)
-        view_button.pack(pady=10)
+        # Create a label for battery level
+        self.battery_level_label = tk.Label(self.root, text="Battery Status: N/A")
+        self.battery_level_label.pack(pady=10)
+
+         # button for "Check battery" signal
+        checkBattery_button = tk.Button(self.root, text="Check Battery", command=self.check_battery_status)
+        checkBattery_button.pack(pady=10)
 
         # Create a frame for the BCI toggle and label
         bci_frame = tk.Frame(self.root)
@@ -56,6 +60,8 @@ class UI:
         # Create a toggle for Test Mode
         test_toggle = tk.Checkbutton(bci_frame, text="Test Mode", variable=self.is_testmode_enabled)
         test_toggle.pack(side=tk.LEFT)
+
+        self.center_window()
 
         # Set up the Tkinter close event to stop the server
         self.root.protocol("WM_DELETE_WINDOW", self.stop_server)
@@ -70,28 +76,25 @@ class UI:
             self.connection_manager.send_message(message)
             self.entry.delete(0, tk.END)
 
-    def send_quit_signal(self):
-        if self.connection_manager:
-            self.connection_manager.send_quit_signal()
-
     def send_start_signal(self):
         if self.connection_manager:
-            """
-            # Determine mode based on BCI and Test Mode toggles
-            if self.is_testmode_enabled.get():
-                mode = "EMA_Test"
-            else:
-                mode = "EMA_Live"
-            """
             current_time = datetime.now()
             self.last_start_label.config(text=f"Session Start: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
             next_schedule_time = self.connection_manager.scheduler.schedule_start()
             self.update_next_notification_time(next_schedule_time)
 
+    def send_skip_signal(self):
+        if self.connection_manager:
+            self.connection_manager.send_skip_signal()
 
     def update_last_notification_time(self, current_time):
         self.last_start_label.config(text=f"Last Notification: {current_time}")
+
+    def check_battery_status(self):
+        if self.connection_manager:
+            battery_level = self.connection_manager.check_battery()
+            self.battery_level_label.config(text=f"Battery Level: {battery_level}%")
 
     def update_next_notification_time(self, next_time):
         if isinstance(next_time, datetime):
@@ -100,10 +103,6 @@ class UI:
             self.next_start_label.config(text=f"Next Notification: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             self.next_start_label.config(text="Next Notification: N/A")
-
-    def send_skip_signal(self):
-        if self.connection_manager:
-            self.connection_manager.send_skip_signal()
 
     def update_qr_code(self):
         """Call QR update method from outside."""
@@ -117,3 +116,14 @@ class UI:
 
     def start(self):
         self.root.mainloop()
+
+    def center_window(self, width=400, height=300):
+        self.root.update_idletasks()
+
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        x = (screen_width - width) // 4
+        y = (screen_height - height) // 4
+        
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
