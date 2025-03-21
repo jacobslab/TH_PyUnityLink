@@ -94,7 +94,10 @@ class ConnectionManager:
                         if not self.live_check_thread.is_alive():
                             self.live_check_running = True
                             self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
-                            self.live_check_thread.start()          
+                            self.live_check_thread.start()
+                        
+                        # First battery check on connection
+                        self.check_battery()
                     else:
                         try:
                             data = self.connection.recv(1024)
