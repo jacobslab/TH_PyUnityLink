@@ -97,7 +97,7 @@ class ConnectionManager:
                             self.live_check_thread.start()
                         
                         # First battery check on connection
-                        self.check_battery()
+                        #self.check_battery()
                     else:
                         try:
                             data = self.connection.recv(1024)
@@ -114,6 +114,8 @@ class ConnectionManager:
                             self.handle_disconnection()
                     except (ConnectionResetError, BrokenPipeError):
                         self.handle_disconnection()
+                else:
+                    continue
         except OSError:
             self.log_timestamped("Server socket closed on OSError.")
             time.sleep(1)
