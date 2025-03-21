@@ -15,7 +15,7 @@ class BCI2000Handler:
         self.monitor_thread.start()
         self.log_bci_message = log_bci_message  # Use ConnectionManager's logging function
 
-        self.schedule_disconnect_reconnect()
+        #self.schedule_disconnect_reconnect()
 
     def connect_bci2000(self):
         if self.connected:

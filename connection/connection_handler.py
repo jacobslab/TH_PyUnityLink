@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from utils.scheduler.scheduler import Scheduler
 from utils.audio.audio_alert import AudioAlert
-#from utils.bci2000.bci2000_handler import BCI2000Handler
+from utils.bci2000.bci2000_handler import BCI2000Handler
 
 class ConnectionManager:
 
@@ -29,8 +29,8 @@ class ConnectionManager:
         self.server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Disable Nagle's Algorithm
         #self.server.bind(('localhost', 4100))
         #self.server.bind(('192.168.1.152', 4100))
-        #self.server.bind(('192.168.0.101', 4100))
-        self.server.bind(('192.168.1.164', 4100))
+        self.server.bind(('192.168.0.101', 4100))
+        #self.server.bind(('192.168.1.164', 4100))
         self.server.listen(1)
 
         # Get script path
@@ -71,7 +71,7 @@ class ConnectionManager:
         self.buffer = ""
 
         # BCI2000 component
-        #self.bci_handler = BCI2000Handler(self.log_bci_timestamped)
+        self.bci_handler = BCI2000Handler(self.log_bci_timestamped)
 
     # accept new connections and handle disconnections
     def accept_connections(self):
@@ -227,10 +227,10 @@ class ConnectionManager:
                     self.log_timestamped(f"Invalid LIVE_CHECK_ACK received")
             elif message_line.startswith("BCI_Sync:"):
                 if self.ui.is_bci_enabled.get():
-                    #self.bci_handler.process_bci_data(message_line)
+                    self.bci_handler.process_bci_data(message_line)
                     #self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
-                #else:
-                    self.log_timestamped(f"BCI data received but ignored (BCI disabled): {message}")
+                else:
+                    self.log_timestamped(f"BCI data received but ignored (BCI disabled)")
             else:
                 self.log_ema_message(message_line)
 
