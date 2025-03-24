@@ -48,6 +48,10 @@ class ConnectionManager:
         self.server_log_file = os.path.join(server_log_dir, f"server_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
         self.ema_log_file = None
 
+        # Define the Nighttime period
+        self.night_start = datetime.strptime("21:30", "%H:%M").time()   # 9:30 pm
+        self.night_end = datetime.strptime("08:30", "%H:%M").time()     # 8:30 am
+
         # Start a background thread to accept connections
         self.connection_thread = threading.Thread(target=self.accept_connections, daemon=True)
         self.connection_thread.start()
@@ -63,7 +67,7 @@ class ConnectionManager:
         self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
 
         # Battery check thread
-        self.battery_check_interval = 10  # 30 minutes in seconds
+        self.battery_check_interval = 1800  # 30 minutes in seconds
         self.battery_check_thread = threading.Thread(target=self.battery_check_loop, daemon=True)
         self.battery_check_thread.start()
 
@@ -85,8 +89,8 @@ class ConnectionManager:
                         self.log_timestamped("Waiting for a new client to connect...")
                         self.connection, self.address = self.server.accept()
                         self.log_timestamped(f"Connected to {self.address}")
-                        self.connection.sendall("Server Initiated".encode('utf-8'))
-                        self.log_timestamped("Sent INIT message to Unity client")
+                        #self.connection.sendall("Server Initiated".encode('utf-8'))
+                        #self.log_timestamped("Sent INIT message to Unity client")
                         
                         self.last_live_check_ack_time = time.time()
 
@@ -208,11 +212,11 @@ class ConnectionManager:
             elif message_line.startswith("BATTERY"):
                 message_parts = message_line.split(":")
                 if len(message_parts) >= 3:
-                    battery_level = message_parts[1].strip()
+                    battery_level = float(message_parts[1].strip())
                     battery_status = message_parts[2].strip()
-                    self.log_timestamped(f"Battery Level: {battery_level}, Status: {battery_status}")
+                    self.log_timestamped(f"Battery Level: {int(battery_level*100)}, Status: {battery_status}")
                     if self.ui:
-                        self.ui.battery_level_label.config(text=f"Battery: {battery_level}% ({battery_status})")
+                        self.ui.battery_level_label.config(text=f"Battery: {int(battery_level*100)}% ({battery_status})")
             elif message_line.startswith("LIVE_CHECK_ACK"):
                 # Extract the live check ID from the response
                 message_parts = message_line.split(":")
@@ -221,6 +225,7 @@ class ConnectionManager:
                     # Check if the ACK matches the last sent ID
                     if ack_id == self.last_live_check_id:
                         latency_ms = (time.time() - self.last_live_check_time) * 1000
+                        time.sleep(0.1)
                         self.log_timestamped(f"Received LIVE_CHECK_ACK:{ack_id} - Latency: {latency_ms:.3f} ms")
                         self.last_live_check_ack_time = time.time()
                     else:
@@ -238,7 +243,16 @@ class ConnectionManager:
 
     # Periodically sends a live check signal
     def live_check_loop(self):
-        timeout_threshold = 100  # Time in seconds to wait for ACK before assuming disconnection
+        clock_time = datetime.now().time()
+
+        # If during nighttime, change live_check_interval to 15 mins
+        # Else use 3 secs
+        if self.night_start <= clock_time or clock_time <= self.night_end:
+            self.live_check_interval = 900
+            timeout_threshold = 1400
+        else:
+            self.live_check_interval = 3
+            timeout_threshold = 100
 
         if self.server_running and self.live_check_running and self.connection:
             current_time = time.time()

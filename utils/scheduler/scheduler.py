@@ -24,6 +24,8 @@ class Scheduler:
             #delay = random.randint(10, 70)
             delay = 0
             self.is_first_session = False
+            next_start_time = datetime.now() + timedelta(seconds=2)
+            return next_start_time
         else:
             min_delay = 90
             max_delay = 150
@@ -41,7 +43,7 @@ class Scheduler:
         else:
             next_start_time = next_start_time
 
-        next_start_time = datetime.now() + timedelta(seconds=20)
+        next_start_time = datetime.now() + timedelta(seconds=30)
         
         return next_start_time
 
