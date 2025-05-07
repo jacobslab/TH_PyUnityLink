@@ -1,6 +1,7 @@
 import sys
 import threading
 import time
+import psutil
 from datetime import datetime, timedelta
 
 sys.path.append('C:\\BCI2000.x64\\prog')
@@ -15,27 +16,35 @@ class BCI2000Handler:
         self.monitor_thread.start()
         self.log_bci_message = log_bci_message  # Use ConnectionManager's logging function
 
-        self.schedule_disconnect_reconnect()
+        #self.schedule_disconnect_reconnect()
 
     def connect_bci2000(self):
         if self.connected:
             return
-        
         try:
             self.bci.Connect()
             self.connected = True
-            if not self.bci.GetParameter("SubjectName"):
-                self.log_bci_message("Attempting to connect...")
-            else:
-                self.log_bci_message("Connected to BCI2000")
+            self.log_bci_message("Connected to BCI2000")
         except Exception as e:
             self.log_bci_message(f"Failed to connect to BCI2000: {e}")
-    
+        
     def disconnect_bci2000(self):
         if self.connected:
             self.bci.Disconnect()
             self.connected = False
             self.log_bci_message("Disconnected from BCI2000")
+
+    def check_bci2000_running_status(self):
+        # BCI2000 module name .exe
+        target_names = {"SignalGenerator.exe"}
+        for proc in psutil.process_iter(attrs=['name']):
+            try:
+                if proc.info['name'] in target_names:
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return False
+
 
     def handle_disconnection(self):
         if self.connected:
@@ -46,14 +55,14 @@ class BCI2000Handler:
     def monitor_connection(self):
         while not self.stop_monitor.is_set():
             time.sleep(1)
-            if not self.connected:
-                continue
-
-            try:
-                if not self.bci.GetParameter("SubjectName"):  # Empty or None means disconnected
-                    self.handle_disconnection()
-            except Exception:
-                self.handle_disconnection()
+            if self.connected:
+                if not self.check_bci2000_running_status():
+                    self.connected = False
+                    self.log_bci_message("Lost connection to BCI2000. Waiting for watchdog to restart module...")
+            else:
+                if self.check_bci2000_running_status():
+                    self.log_bci_message("BCI2000 module is back up. Attempting to reconnect...")
+                    self.connect_bci2000()
 
     def process_bci_data(self, message):
         self.connect_bci2000()
