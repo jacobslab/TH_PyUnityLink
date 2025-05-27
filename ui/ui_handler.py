@@ -13,6 +13,11 @@ class UI:
         self.is_testmode_enabled = tk.BooleanVar(value=True)
 
         self.last_notification_time = None
+
+        self.triggered_count = 0
+        self.responded_count = 0
+        self.completed_count = 0
+        self.ignored_count = 0
         """
         # Create and configure the input field and label
         label = tk.Label(self.root, text="Enter Subject ID:")
@@ -32,6 +37,22 @@ class UI:
         # show next notification time
         self.next_start_label = tk.Label(self.root, text="Next Notification: N/A")
         self.next_start_label.pack(pady=10)
+
+        # game counter ui
+        counter_frame = tk.Frame(self.root)
+        counter_frame.pack(pady=10)
+
+        self.triggered_label = tk.Label(counter_frame, text="Triggered: 0")
+        self.triggered_label.grid(row=0, column=0, padx=10)
+
+        self.responded_label = tk.Label(counter_frame, text="Responded: 0")
+        self.responded_label.grid(row=0, column=1, padx=10)
+
+        self.completed_label = tk.Label(counter_frame, text="Completed: 0")
+        self.completed_label.grid(row=0, column=2, padx=10)
+
+        self.ignored_label = tk.Label(counter_frame, text="Ignored: 0")
+        self.ignored_label.grid(row=0, column=3, padx=10)
 
         # button for "START" signal
         start_button = tk.Button(self.root, text="Start EMA Sequence", command=self.send_start_signal)
@@ -87,6 +108,7 @@ class UI:
     def send_skip_signal(self):
         if self.connection_manager:
             self.connection_manager.send_skip_signal()
+            self.increment_ignored()
 
     def update_last_notification_time(self, current_time):
         self.last_start_label.config(text=f"Last Notification: {current_time}")
@@ -103,6 +125,22 @@ class UI:
             self.next_start_label.config(text=f"Next Notification: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             self.next_start_label.config(text="Next Notification: N/A")
+    
+    def increment_triggered(self):
+        self.triggered_count += 1
+        self.triggered_label.config(text=f"Triggered: {self.triggered_count}")
+
+    def increment_responded(self):
+        self.responded_count += 1
+        self.responded_label.config(text=f"Responded: {self.responded_count}")
+
+    def increment_completed(self):
+        self.completed_count += 1
+        self.completed_label.config(text=f"Completed: {self.completed_count}")
+
+    def increment_ignored(self):
+        self.ignored_count += 1
+        self.ignored_label.config(text=f"Ignored: {self.ignored_count}")
 
     def update_qr_code(self):
         """Call QR update method from outside."""
@@ -117,7 +155,7 @@ class UI:
     def start(self):
         self.root.mainloop()
 
-    def center_window(self, width=400, height=300):
+    def center_window(self, width=450, height=350):
         self.root.update_idletasks()
 
         screen_width = self.root.winfo_screenwidth()

@@ -43,7 +43,7 @@ class Scheduler:
         else:
             next_start_time = next_start_time
 
-        next_start_time = datetime.now() + timedelta(seconds=30)
+        next_start_time = datetime.now() + timedelta(seconds=210)
         
         return next_start_time
 

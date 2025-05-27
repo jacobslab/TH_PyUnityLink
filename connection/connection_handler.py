@@ -21,7 +21,7 @@ class ConnectionManager:
         self.scheduler = Scheduler(self, update_ui_callback)
 
         # Initialize AudioAlert
-        self.audio_alert = AudioAlert(alert_interval=120, skip_callback=self.send_skip_signal)
+        self.audio_alert = AudioAlert(alert_interval=120, skip_callback=self.send_skip_signal, ui_instance= self.ui)
 
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -30,7 +30,9 @@ class ConnectionManager:
         #self.server.bind(('localhost', 4100))
         #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
-        self.server.bind(('192.168.1.164', 4100))
+        #self.server.bind(('192.168.0.103', 4100))
+        #self.server.bind(('192.168.1.164', 4100))
+        self.server.bind(('192.168.10.20', 4100))
         self.server.listen(1)
 
         # Get script path
@@ -64,7 +66,7 @@ class ConnectionManager:
         self.last_live_check_id = None 
         self.last_live_check_time = None  # Store timestamp for latency check
         self.last_live_check_ack_time = time.time()   # Track the lastest LIVE_CHECK_ACK received time
-        self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+        self.live_check_thread = None #threading.Thread(target=self.live_check_loop, daemon=True)
 
         # Battery check thread
         self.battery_check_interval = 1800  # 30 minutes in seconds
@@ -95,10 +97,11 @@ class ConnectionManager:
                         self.last_live_check_ack_time = time.time()
 
                         # Start live check once a connection is established
-                        if not self.live_check_thread.is_alive():
-                            self.live_check_running = True
-                            self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
-                            self.live_check_thread.start()
+                        #if self.live_check_thread is None or not self.live_check_thread.is_alive():
+                        ##    time.sleep(1)
+                        #    self.live_check_running = True
+                        #    self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+                        #    self.live_check_thread.start()
                         
                         # First battery check on connection
                         #self.check_battery()
@@ -180,6 +183,7 @@ class ConnectionManager:
                 self.connection.sendall("EMA_START_Live".encode('utf-8'))
                 self.log_timestamped(f"Initiated an EMA session [Live]")
             
+            self.ui.increment_triggered();
             self.audio_alert.play_audio()
             self.log_timestamped(f"Audio alert - Start")
             
@@ -205,10 +209,20 @@ class ConnectionManager:
             message_line, self.buffer = self.buffer.split("\n", 1)
             message_line = message_line.strip()  # Remove any leading/trailing spaces or newlines
 
-            if message_line == "EMA_Session_ACK":
+            if message_line == "CLIENT_READY":
+                self.log_timestamped("iPad ready for the study")
+                if self.live_check_thread is None or not self.live_check_thread.is_alive():
+                    self.live_check_running = True
+                    self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+                    self.live_check_thread.start()
+            elif message_line == "EMA_Session_ACK":
                 self.audio_alert.stop_audio()
                 self.log_timestamped(f"Stop audio alert")
                 self.log_timestamped(f"EMA_ACK: First 3 questions completed.")
+                self.ui.increment_responded()
+            elif message_line == "Session_Complete":
+                self.log_timestamped(f"Current session completed.")
+                self.ui.increment_completed()
             elif message_line.startswith("BATTERY"):
                 message_parts = message_line.split(":")
                 if len(message_parts) >= 3:
@@ -224,11 +238,17 @@ class ConnectionManager:
                     ack_id = message_parts[1].replace("LIVE_CHECK", "").strip()
                     # Check if the ACK matches the last sent ID
                     if ack_id == self.last_live_check_id:
-                        latency_ms = (time.time() - self.last_live_check_time) * 1000
-                        time.sleep(0.1)
-                        self.log_timestamped(f"Received LIVE_CHECK_ACK:{ack_id} - Latency: {latency_ms:.3f} ms")
+                        latency_ms = None
+                        if len(message_parts) >= 4 and message_parts[2] == "LATENCY":
+                            try:
+                                latency_ms = float(message_parts[3].strip())
+                            except ValueError:
+                                pass
+                            #time.sleep(0.1)
+                            self.log_timestamped(f"Received LIVE_CHECK_ACK:{ack_id} - Latency: {latency_ms:.3f} ms")
                         self.last_live_check_ack_time = time.time()
                     else:
+                        #time.sleep(0.1)
                         self.log_timestamped(f"Received LIVE_CHECK_ACK with unexpected ID: {ack_id}")
                 else:
                     self.log_timestamped(f"Invalid LIVE_CHECK_ACK received")
@@ -247,12 +267,12 @@ class ConnectionManager:
 
         # If during nighttime, change live_check_interval to 15 mins
         # Else use 3 secs
-        if self.night_start <= clock_time or clock_time <= self.night_end:
-            self.live_check_interval = 900
-            timeout_threshold = 1400
-        else:
-            self.live_check_interval = 3
-            timeout_threshold = 100
+        #if self.night_start <= clock_time or clock_time <= self.night_end:
+        #    self.live_check_interval = 900
+        #    timeout_threshold = 1400
+        #else:
+            #self.live_check_interval = 3
+        timeout_threshold = 100
 
         if self.server_running and self.live_check_running and self.connection:
             current_time = time.time()
@@ -265,12 +285,13 @@ class ConnectionManager:
             
             # Generate a unique ID for the live check
             self.last_live_check_id = str(self.liveCheckIdCounter)
-            live_check_message = f"LIVE_CHECK:{self.last_live_check_id}"
+            current_timestamp_ms = int(time.time() * 1000)
+            live_check_message = f"LIVE_CHECK:{self.last_live_check_id}:{current_timestamp_ms}"
 
             try:
                 self.last_live_check_time = time.time()
                 self.connection.sendall(live_check_message.encode('utf-8'))
-                time.sleep(0.1)
+                #time.sleep(0.1)
                 self.log_timestamped(f"Sent LIVE_CHECK to iPad:{self.last_live_check_id}")
 
                 # Increment the counter and reset it if needed

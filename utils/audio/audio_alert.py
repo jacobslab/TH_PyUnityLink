@@ -4,12 +4,13 @@ import threading
 from datetime import datetime
 
 class AudioAlert:
-    def __init__(self, alert_interval = 120, skip_callback = None):
+    def __init__(self, alert_interval = 120, skip_callback = None, ui_instance = None):
         self.audio_file = "audio_alert.wav"
         self._alert_interval = alert_interval
         self.end_playing = False
         self.play_thread = None
         self.skip_callback = skip_callback
+        self.ui = ui_instance
     
     def play_audio(self):
         """Start playing audio in a separate thread."""
@@ -30,6 +31,8 @@ class AudioAlert:
             # os.system(f'start {self.audio_file}')  # Windows
             time.sleep(0.5)  # Avoid tight loop
 
+        if not self.end_playing:
+            self.ui.increment_ignored()
         self.log_timestamped("Audio stopped")
         
         if self.skip_callback:
