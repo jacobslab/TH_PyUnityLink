@@ -27,12 +27,12 @@ class ConnectionManager:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Disable Nagle's Algorithm
-        #self.server.bind(('localhost', 4100))
+        self.server.bind(('localhost', 4100))
         #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
         #self.server.bind(('192.168.0.103', 4100))
         #self.server.bind(('192.168.1.164', 4100))
-        self.server.bind(('192.168.10.20', 4100))
+        #self.server.bind(('192.168.10.20', 4100))
         self.server.listen(1)
 
         # Get script path
