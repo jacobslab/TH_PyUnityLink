@@ -25,7 +25,7 @@ class ExperimentReporter:
             time.sleep(30)
 
     def send_report(self):
-        subject = "[Testing] Daily EMA Report"
+        subject = "Daily EMA Report"
         body = (
                 "Automated daily summary for today's EMA sessions:\n\n"
                 f"Total EMAs Triggered: {self.ui.triggered_count}\n"
