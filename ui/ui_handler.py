@@ -1,4 +1,5 @@
 import tkinter as tk
+import os
 from datetime import datetime
 from utils.qrcode.qrcode_display import QRCodeDisplay
 
@@ -18,6 +19,7 @@ class UI:
         self.responded_count = 0
         self.completed_count = 0
         self.ignored_count = 0
+
         """
         # Create and configure the input field and label
         label = tk.Label(self.root, text="Enter Subject ID:")
@@ -53,6 +55,40 @@ class UI:
 
         self.ignored_label = tk.Label(counter_frame, text="Ignored: 0")
         self.ignored_label.grid(row=0, column=3, padx=10)
+
+        # Load today's counter values from file
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        report_log_dir = os.path.join(project_root, "logs", "email_report")
+        os.makedirs(report_log_dir, exist_ok=True)
+        file_path = os.path.join(report_log_dir, f"{date_str}.unsent.txt")
+
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as f:
+                f.write("Triggered: 0, Responded: 0, Completed: 0, Ignored: 0")
+
+        try:
+            with open(file_path, "r") as f:
+                content = f.read()
+                for part in content.split(","):
+                    key, val = part.strip().split(":")
+                    count = int(val.strip())
+                    if "Triggered" in key:
+                        self.triggered_count = count
+                    elif "Responded" in key:
+                        self.responded_count = count
+                    elif "Completed" in key:
+                        self.completed_count = count
+                    elif "Ignored" in key:
+                        self.ignored_count = count
+        except Exception as e:
+            print(f"Failed to load counters from file: {e}")
+
+        self.triggered_label.config(text=f"Triggered: {self.triggered_count}")
+        self.responded_label.config(text=f"Responded: {self.responded_count}")
+        self.completed_label.config(text=f"Completed: {self.completed_count}")
+        self.ignored_label.config(text=f"Ignored: {self.ignored_count}")
 
         # button for "START" signal
         start_button = tk.Button(self.root, text="Start EMA Sequence", command=self.send_start_signal)
@@ -129,18 +165,36 @@ class UI:
     def increment_triggered(self):
         self.triggered_count += 1
         self.triggered_label.config(text=f"Triggered: {self.triggered_count}")
+        self.update_report_counter()
 
     def increment_responded(self):
         self.responded_count += 1
         self.responded_label.config(text=f"Responded: {self.responded_count}")
+        self.update_report_counter()
 
     def increment_completed(self):
         self.completed_count += 1
         self.completed_label.config(text=f"Completed: {self.completed_count}")
+        self.update_report_counter()
 
     def increment_ignored(self):
         self.ignored_count += 1
         self.ignored_label.config(text=f"Ignored: {self.ignored_count}")
+        self.update_report_counter()
+
+    def update_report_counter(self):
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        report_log_dir = os.path.join(project_root, "logs", "email_report")
+        os.makedirs(report_log_dir, exist_ok=True)
+
+        file_path = os.path.join(report_log_dir, f"{date_str}.unsent.txt")
+
+        content = f"Triggered: {self.triggered_count}, Responded: {self.responded_count}, Completed: {self.completed_count}, Ignored: {self.ignored_count}"
+        with open(file_path, "w") as f:
+            f.write(content)
+
 
     def update_qr_code(self):
         """Call QR update method from outside."""

@@ -14,7 +14,8 @@ if __name__ == '__main__':
         "port": 465,
         "sender": "ema.report.camera@gmail.com",
         "password": "vixh tpoa tgrx whdz",
-        "recipient": ["y.li7@columbia.edu", "joshua.jacobs@columbia.edu", "hz2555@columbia.edu"]
+        #"recipient": ["y.li7@columbia.edu", "joshua.jacobs@columbia.edu", "hz2555@columbia.edu"]
+        "recipient": ["y.li7@columbia.edu"]
     }
     reporter = ExperimentReporter(ui_instance=ui, email_config=email_config)
 

@@ -1,4 +1,5 @@
 # Experiment night reporter
+import os
 import schedule
 import threading
 import time
@@ -10,6 +11,15 @@ class ExperimentReporter:
     def __init__(self, ui_instance, email_config):
         self.ui = ui_instance
         self.email_config = email_config
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(script_dir))
+        base_dir = os.path.join(project_root, "logs")
+        self.report_log_dir = os.path.join(base_dir, "email_report")
+
+        # Ensure all log directories exist
+        for directory in [self.report_log_dir]:
+            os.makedirs(directory, exist_ok=True)
 
         # Schedule the report to run every day at 9:30 PM
         schedule.every().day.at("21:30").do(self.send_report)
@@ -25,16 +35,36 @@ class ExperimentReporter:
             time.sleep(30)
 
     def send_report(self):
-        subject = "Daily EMA Report"
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        unsent_path = os.path.join(self.report_log_dir, f"{date_str}.unsent.txt")
+        sent_path = os.path.join(self.report_log_dir, f"{date_str}.sent.txt")
+
+        if not os.path.exists(unsent_path):
+            print(self.report_log_dir)
+            print(date_str)
+            print(unsent_path)
+            print(sent_path)
+            self.ui.connection_manager.log_timestamped(f"No unsent report found for today: {date_str}.")
+            return
+
+        try:
+            with open(unsent_path, "r") as f:
+                content = f.read().strip()
+                counts = {k.strip(): int(v.strip()) for k, v in (pair.split(":") for pair in content.split(","))}
+        except Exception as e:
+            self.ui.connection_manager.log_timestamped(f"Failed to read report file: {e}")
+            return
+
+        subject = f"Daily EMA Report - {date_str}"
         body = (
-                "Automated daily summary for today's EMA sessions:\n\n"
-                f"Total EMAs Triggered: {self.ui.triggered_count}\n"
-                f"  - Responded: {self.ui.responded_count}\n"
-                f"    - Of those responded, {self.ui.completed_count} were fully completed.\n"
-                f"  - Ignored: {self.ui.ignored_count}\n\n"
-                f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                "Please do not reply to this email."
-            )
+            "Automated daily summary for today's EMA sessions:\n\n"
+            f"Total EMAs Triggered: {counts.get('Triggered', 0)}\n"
+            f"  - Responded: {counts.get('Responded', 0)}\n"
+            f"    - Of those responded, {counts.get('Completed', 0)} were fully completed.\n"
+            f"  - Ignored: {counts.get('Ignored', 0)}\n\n"
+            f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            "Please do not reply to this email."
+        )
 
         msg = MIMEText(body)
         msg['Subject'] = subject
@@ -45,8 +75,7 @@ class ExperimentReporter:
             with smtplib.SMTP_SSL(self.email_config['smtp_server'], self.email_config['port']) as server:
                 server.login(self.email_config['sender'], self.email_config['password'])
                 server.send_message(msg)
-            print(f"[{datetime.now()}] - Email sent successfully.")
-            self.ui.connection_manager.log_timestamped("Night report email sent.")
+            self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Email sent successfully.")
+            os.rename(unsent_path, sent_path)
         except Exception as e:
-            print(f"[{datetime.now()}] - Failed to send email: {e}")
-            self.ui.connection_manager.log_timestamped(f"Failed to send night report email: {e}")
+            self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Failed to send email: {e}")
