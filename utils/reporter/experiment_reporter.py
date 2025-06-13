@@ -33,6 +33,23 @@ class ExperimentReporter:
         while True:
             schedule.run_pending()
             time.sleep(30)
+    
+    def reset_ui_counter(self):
+        # Reset UI counters
+        self.ui.triggered_count = 0
+        self.ui.responded_count = 0
+        self.ui.completed_count = 0
+        self.ui.ignored_count = 0
+
+        self.ui.triggered_label.config(text="Triggered: 0")
+        self.ui.responded_label.config(text="Responded: 0")
+        self.ui.completed_label.config(text="Completed: 0")
+        self.ui.ignored_label.config(text="Ignored: 0")
+
+        self.ui.update_report_counter()
+
+        self.ui.connection_manager.log_timestamped(f"EMA Counter reset for today.")
+
 
     def send_report(self):
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -77,5 +94,6 @@ class ExperimentReporter:
                 server.send_message(msg)
             self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Email sent successfully.")
             os.rename(unsent_path, sent_path)
+            self.reset_ui_counter()
         except Exception as e:
             self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Failed to send email: {e}")
