@@ -97,3 +97,17 @@ class ExperimentReporter:
             self.reset_ui_counter()
         except Exception as e:
             self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Failed to send email: {e}")
+
+    def send_email(self, subject, body):
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = self.email_config['sender']
+        msg['To'] = ", ".join(self.email_config['recipient'])
+        
+        try:
+            with smtplib.SMTP_SSL(self.email_config['smtp_server'], self.email_config['port']) as server:
+                server.login(self.email_config['sender'], self.email_config['password'])
+                server.send_message(msg)
+            self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Alert email sent successfully.")
+        except Exception as e:
+            self.ui.connection_manager.log_timestamped(f"[{datetime.now()}] - Failed to send alert email: {e}")

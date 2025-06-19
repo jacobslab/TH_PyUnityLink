@@ -10,7 +10,7 @@ from utils.audio.audio_alert import AudioAlert
 
 class ConnectionManager:
 
-    def __init__(self, ui_instance, update_ui_callback):
+    def __init__(self, ui_instance, update_ui_callback, reporter_instance):
         self.server_running = True
         self.connection = None
         self.address = None
@@ -77,7 +77,7 @@ class ConnectionManager:
         self.buffer = ""
 
         # BCI2000 component
-        #self.bci_handler = BCI2000Handler(self.log_bci_timestamped)
+        #self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
 
     # accept new connections and handle disconnections
     def accept_connections(self):
