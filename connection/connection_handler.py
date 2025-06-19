@@ -76,6 +76,9 @@ class ConnectionManager:
         # Message buffer for incoming data from EMA
         self.buffer = ""
 
+        # Experiment Reporter
+        self.reporter = reporter_instance
+
         # BCI2000 component
         #self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
 
