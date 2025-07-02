@@ -41,14 +41,16 @@ class ConnectionManager:
         log_base_dir = os.path.join(project_root, "logs")
         server_log_dir = os.path.join(log_base_dir, "server_log")
         self.ema_log_dir = os.path.join(log_base_dir, "ema_log")
+        self.latency_log_dir = os.path.join(log_base_dir, "latency_log")
 
         # Ensure all log directories exist
-        for directory in [log_base_dir, server_log_dir, self.ema_log_dir]:
+        for directory in [log_base_dir, server_log_dir, self.ema_log_dir, self.latency_log_dir]:
             os.makedirs(directory, exist_ok=True)
 
         # Generate unique log file names
         self.server_log_file = os.path.join(server_log_dir, f"server_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
         self.ema_log_file = None
+        self.latency_log_file = None
 
         # Define the Nighttime period
         self.night_start = datetime.strptime("21:30", "%H:%M").time()   # 9:30 pm
@@ -78,6 +80,9 @@ class ConnectionManager:
 
         # Experiment Reporter
         self.reporter = reporter_instance
+
+        # Photodiode flicker test running flag
+        self.photodiode_test_running = False
 
         # BCI2000 component
         #self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
@@ -349,3 +354,78 @@ class ConnectionManager:
             return  
         with open(self.ema_log_file, "a") as log_file:
             log_file.write(message.strip() + "\n")
+
+    # Photodiode Latency Test
+    def start_photodiode_flicker_test(self):
+        if not self.connection:
+            self.log_timestamped("Photodiode test aborted: No client connected.")
+            return
+
+        # Generate latency log file name if not already set
+        if not self.latency_log_file:
+            self.latency_log_file = os.path.join(self.latency_log_dir, f"photodiode_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+
+        self.log_timestamped("Starting photodiode flicker test: Freq 2Hz)...")
+
+        flicker_interval = 1.0  # 0.5 Hz => 2s per cycle => 1s per on/off
+
+        self.photodiode_test_running = True
+
+        def flicker_loop():
+            try:
+                self.connection.sendall("FLASH_START\n".encode('utf-8'))
+                self.log_latency_timestamped("Sent photodiode signal: FLASH_START")
+            except Exception as e:
+                self.log_latency_timestamped(f"Error sending FLASH_START: {e}")
+                return
+
+            state = False  # Start with off
+            while self.photodiode_test_running and self.connection:
+                state = not state
+                signal = "FLASH_ON" if state else "FLASH_OFF"
+                try:
+                    self.connection.sendall(f"{signal}\n".encode('utf-8'))
+                    color = "WHITE" if signal == "FLASH_ON" else "BLACK"
+                    self.log_latency_timestamped(f"Sent photodiode signal: {signal} - Screen color: {color}")
+                    # BCI event marking after logging the latency timestamp
+                    if self.ui.is_bci_enabled.get():
+                        if not self.bci_handler.bci.connected:
+                            self.bci_handler.bci.Connect()
+                            self.bci_handler.bci.connected = True
+                        if signal == "FLASH_ON":
+                            self.bci_handler.bci.SetEventVariable("EmaColor", 1)    # 1 for white
+                        else:
+                            self.bci_handler.bci.SetEventVariable("EmaColor", 2)    # 2 for black
+                except Exception as e:
+                    self.log_latency_timestamped(f"Error sending photodiode signal: {e}")
+                    break
+                time.sleep(flicker_interval)
+
+            try:
+                self.connection.sendall("FLASH_END\n".encode('utf-8'))
+                self.log_latency_timestamped("Sent photodiode signal: FLASH_END")
+            except Exception as e:
+                self.log_latency_timestamped(f"Error sending FLASH_END: {e}")
+
+            self.photodiode_test_running = False
+
+        threading.Thread(target=flicker_loop, daemon=True).start()
+
+    def stop_photodiode_flicker_test(self):
+        self.photodiode_test_running = False
+        if self.connection:
+            try:
+                self.connection.sendall("FLASH_END\n".encode('utf-8'))
+                self.log_latency_timestamped("Sent photodiode signal: FLASH_END")
+            except Exception as e:
+                self.log_latency_timestamped(f"Error sending FLASH_END: {e}")
+        else:
+            self.log_latency_timestamped("No client connected!")
+
+
+    def log_latency_timestamped(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
+        log_message = f"{timestamp} - {message}"
+        print(log_message)
+        with open(self.latency_log_file, "a") as log_file:
+            log_file.write(log_message + "\n")

@@ -114,7 +114,8 @@ class BCI2000Handler:
         except Exception:
             self.log_bci_message("BCI2000 not connected at EMA log file initialization")
             return "<BCI_SubjectSession>"
-        
+    
+
     def schedule_disconnect_reconnect(self):
         # Schedule disconnect at 9:01 PM
         self.schedule_task(self.disconnect_bci2000, "21:01")

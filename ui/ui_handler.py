@@ -118,6 +118,16 @@ class UI:
         test_toggle = tk.Checkbutton(bci_frame, text="Test Mode", variable=self.is_testmode_enabled)
         test_toggle.pack(side=tk.LEFT)
 
+        # Buttons for photodiode flicker test
+        photodiode_frame = tk.Frame(self.root)
+        photodiode_frame.pack(pady=10)
+
+        flicker_start_button = tk.Button(photodiode_frame, text="Start Photodiode Test", command=self.start_photodiode_test)
+        flicker_start_button.pack(side=tk.LEFT, padx=5)
+
+        flicker_stop_button = tk.Button(photodiode_frame, text="Stop Photodiode Test", command=self.stop_photodiode_test)
+        flicker_stop_button.pack(side=tk.LEFT, padx=5)
+
         self.center_window()
 
         # Set up the Tkinter close event to stop the server
@@ -209,7 +219,7 @@ class UI:
     def start(self):
         self.root.mainloop()
 
-    def center_window(self, width=450, height=350):
+    def center_window(self, width=450, height=400):
         self.root.update_idletasks()
 
         screen_width = self.root.winfo_screenwidth()
@@ -219,3 +229,11 @@ class UI:
         y = (screen_height - height) // 4
         
         self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+    def start_photodiode_test(self):
+        if self.connection_manager:
+            self.connection_manager.start_photodiode_flicker_test()
+
+    def stop_photodiode_test(self):
+        if self.connection_manager:
+            self.connection_manager.stop_photodiode_flicker_test()
