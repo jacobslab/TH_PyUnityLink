@@ -3,7 +3,7 @@ import threading
 import select
 import time
 import os
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from utils.scheduler.scheduler import Scheduler
 from utils.audio.audio_alert import AudioAlert
 #from utils.bci2000.bci2000_handler import BCI2000Handler
@@ -87,6 +87,11 @@ class ConnectionManager:
         # BCI2000 component
         #self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
 
+        # Start BCI2000 connection check thread
+        self.bci_check_interval = 1800  # 30 mins
+        self.bci_check_thread = threading.Thread(target=self.bci_check_loop, daemon=True)
+        self.bci_check_thread.start()
+
     # accept new connections and handle disconnections
     def accept_connections(self):
         # TODO: handle reconnect on server side
@@ -143,31 +148,6 @@ class ConnectionManager:
             self.log_timestamped(f"Sent message to iPad: {message}")
         else:
             self.log_timestamped("No client connected!")
-
-    # send the "Quit" signal to unity
-    """
-    def send_quit_signal(self):
-        if self.connection:
-            self.connection.sendall("EMA_QUIT".encode('utf-8'))
-            self.log_timestamped("EMA Session Quit on PyUnityLink Request")
-        else:
-            self.log_timestamped("No client connected!")
-    """
-
-    def check_battery(self):
-        if self.connection:
-            self.connection.sendall("BATTERY".encode('utf-8'))
-            self.log_timestamped("Checking iPad Battery Status")
-        else:
-            self.log_timestamped("No client connected!")
-
-    def battery_check_loop(self):
-        while self.server_running:
-            time.sleep(self.battery_check_interval)
-            if self.connection:
-                self.check_battery()
-            else:
-                self.log_timestamped("Battery check skipped: No client connected.")
 
     def send_start_signal(self):
         self.ui.update_qr_code()
@@ -308,6 +288,36 @@ class ConnectionManager:
                 self.log_timestamped(f"Error sending live check: {e}")
                 
             threading.Timer(self.live_check_interval, self.live_check_loop).start()
+
+    def check_battery(self):
+        if self.connection:
+            self.connection.sendall("BATTERY".encode('utf-8'))
+            self.log_timestamped("Checking iPad Battery Status")
+        else:
+            self.log_timestamped("No client connected!")
+
+    def battery_check_loop(self):
+        while self.server_running:
+            time.sleep(self.battery_check_interval)
+            if self.connection:
+                self.check_battery()
+            else:
+                self.log_timestamped("Battery check skipped: No client connected.")
+
+    def bci_check_loop(self):
+        while self.server_running:
+            now = datetime.now().time()
+            start = dt_time(9, 0)   # 9:00 AM
+            end = dt_time(21, 0)    # 9:00 PM
+
+            if start <= now <= end and self.ui.is_bci_enabled.get():
+                try:
+                    name = self.bci_handler.get_bci_subjectName()
+                    self.log_bci_timestamped(f"Periodic BCI2000 check: SubjectName={name}")
+                except Exception as e:
+                    self.log_bci_timestamped(f"Error during BCI2000 check: {e}")
+
+            time.sleep(self.bci_check_interval)
 
     # Handles client disconnection
     def handle_disconnection(self):
