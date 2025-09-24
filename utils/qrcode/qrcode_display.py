@@ -27,7 +27,7 @@ class QRCodeDisplay:
         self.root.bind("<Escape>", lambda e: self.root.destroy())
 
     def generate_qr(self, size):
-        current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S.") + f"{int(time.time() * 1000) % 1000:03d}"
         qr = qrcode.QRCode(border=1)
         qr.add_data(current_time)
         qr.make(fit=True)
