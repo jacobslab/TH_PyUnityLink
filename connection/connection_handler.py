@@ -176,7 +176,12 @@ class ConnectionManager:
             self.log_timestamped(f"Audio alert - Start")
             
         else:
-            self.log_timestamped("No client connected!")
+            self.log_timestamped("EMA Start Error: No client connected!")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.reporter.send_email(
+                subject="EMA Start Failed - No Client Connected",
+                body=f"The server attempted to trigger a EMA session, but no iPad client was connected at {timestamp}"
+            )
         
         self.scheduler.schedule_start()
         #next_schedule_time = 
@@ -294,7 +299,12 @@ class ConnectionManager:
             self.connection.sendall("BATTERY".encode('utf-8'))
             self.log_timestamped("Checking iPad Battery Status")
         else:
-            self.log_timestamped("No client connected!")
+            self.log_timestamped("Battery Check Error: No client connected!")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.reporter.send_email(
+                subject="Battery Check Failed - No Client Connected",
+                body=f"The server attempted to check the battery level of the iPad, but no iPad client was connected at {timestamp}"
+            )
 
     def battery_check_loop(self):
         while self.server_running:
@@ -313,7 +323,7 @@ class ConnectionManager:
             if start <= now <= end and self.ui.is_bci_enabled.get():
                 try:
                     name = self.bci_handler.get_bci_subjectName()
-                    self.log_bci_timestamped(f"Periodic BCI2000 check: SubjectName={name}")
+                    self.log_bci_timestamped(f"Periodic BCI2000 check: Subject ID: {name}")
                 except Exception as e:
                     self.log_bci_timestamped(f"Error during BCI2000 check: {e}")
 
