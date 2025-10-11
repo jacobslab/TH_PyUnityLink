@@ -21,7 +21,7 @@ class ConnectionManager:
         self.scheduler = Scheduler(self, update_ui_callback)
 
         # Initialize AudioAlert
-        self.audio_alert = AudioAlert(alert_interval=120, skip_callback=self.send_skip_signal, ui_instance= self.ui)
+        self.audio_alert = AudioAlert(alert_interval=120, skip_callback=self.send_skip_signal, ui_instance= self.ui, log_timestamped=self.log_timestamped)
 
         # Set up the Python server
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
