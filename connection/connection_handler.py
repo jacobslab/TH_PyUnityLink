@@ -449,3 +449,6 @@ class ConnectionManager:
         print(log_message)
         with open(self.latency_log_file, "a") as log_file:
             log_file.write(log_message + "\n")
+
+    def get_subject_id(self):
+        return self.bci_handler.get_bci_subjectName()

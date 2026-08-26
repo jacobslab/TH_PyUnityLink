@@ -26,7 +26,14 @@ class ExperimentReporter:
         #schedule.every(1).minutes.do(self.send_report)     # (TESTING) sends reports after 1 min
 
         # Run schedule in a background thread
-        self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
+        #self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
+        #self.scheduler_thread.start()
+
+    def start(self):
+        self.scheduler_thread = threading.Thread(
+            target=self._run_scheduler,
+            daemon=True
+        )
         self.scheduler_thread.start()
 
     def _run_scheduler(self):
@@ -56,6 +63,14 @@ class ExperimentReporter:
         unsent_path = os.path.join(self.report_log_dir, f"{date_str}.unsent.txt")
         sent_path = os.path.join(self.report_log_dir, f"{date_str}.sent.txt")
 
+        try:
+            subject_id = self.ui.connection_manager.get_subject_id()
+        except Exception as e:
+            subject_id = "Unknown"
+            self.ui.connection_manager.log_timestamped(
+            f"Failed to get BCI2000 Subject ID for daily email report: {e}"
+        )
+
         if not os.path.exists(unsent_path):
             print(self.report_log_dir)
             print(date_str)
@@ -72,7 +87,7 @@ class ExperimentReporter:
             self.ui.connection_manager.log_timestamped(f"Failed to read report file: {e}")
             return
 
-        subject = f"Daily EMA Report - {date_str}"
+        subject = f"[ {subject_id} ] Daily EMA Report - {date_str}"
         body = (
             "Automated daily summary for today's EMA sessions:\n\n"
             f"Total EMAs Triggered: {counts.get('Triggered', 0)}\n"

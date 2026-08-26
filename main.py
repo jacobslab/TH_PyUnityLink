@@ -11,19 +11,28 @@ if __name__ == '__main__':
         "smtp_server": "smtp.gmail.com",
         "port": 465,
         "sender": "ema.report.camera@gmail.com",
-        "password": "vixh tpoa tgrx whdz",
+        "password": "gkoz pboj avun ovnk",
         "recipient": ["camerabrainstudy@cumc.columbia.edu",
-                      "joshua.jacobs@columbia.edu",
-                      "bey2103@cumc.columbia.edu",
-                      "hz2555@columbia.edu",
-                      "cz2715@columbia.edu",
-                      "y.li7@columbia.edu"]
-        #"recipient": ["y.li7@columbia.edu"]
+                     "joshuajacobs@uchicago.edu",
+                     "bey2103@cumc.columbia.edu",
+                     "cz2715@columbia.edu",
+                     "hz2555@uchicago.edu",
+                     "francisyli@uchicago.edu",
+                     "agv2113@cumc.columbia.edu",
+                     "ys3799@cumc.columbia.edu",
+                     "ac4495@cumc.columbia.edu",
+                     ]
+        # "recipient": ["cz2715@columbia.edu",
+        #               "hz2555@uchicago.edu",
+        #               "francisyli@uchicago.edu"
+        #               ]
+        #"recipient": ["francisyli@uchicago.edu"]
     }
     reporter = ExperimentReporter(ui_instance=ui, email_config=email_config)
 
     conn_manager = ConnectionManager(ui, ui.update_next_notification_time, reporter)
     ui.connection_manager = conn_manager
 
+    reporter.start()
 
     ui.start()
