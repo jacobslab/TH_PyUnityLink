@@ -28,48 +28,51 @@ class ExperimentReporter:
         # Run schedule in a background thread
         #self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
         #self.scheduler_thread.start()
+        self.subject_id = None
 
     def start(self):
         self.scheduler_thread = threading.Thread(
             target=self._run_scheduler,
             daemon=True
         )
-        self.scheduler_thread.start()
+        self.scheduler_thread.start()    
 
     def _run_scheduler(self):
         while True:
             schedule.run_pending()
             time.sleep(30)
-    
+
     def reset_ui_counter(self):
-        # Reset UI counters
-        self.ui.triggered_count = 0
-        self.ui.responded_count = 0
-        self.ui.completed_count = 0
-        self.ui.ignored_count = 0
+            # Reset UI counters
+            self.ui.triggered_count = 0
+            self.ui.responded_count = 0
+            self.ui.completed_count = 0
+            self.ui.ignored_count = 0
 
-        self.ui.triggered_label.config(text="Triggered: 0")
-        self.ui.responded_label.config(text="Responded: 0")
-        self.ui.completed_label.config(text="Completed: 0")
-        self.ui.ignored_label.config(text="Ignored: 0")
+            self.ui.triggered_label.config(text="Triggered: 0")
+            self.ui.responded_label.config(text="Responded: 0")
+            self.ui.completed_label.config(text="Completed: 0")
+            self.ui.ignored_label.config(text="Ignored: 0")
 
-        self.ui.update_report_counter()
+            self.ui.update_report_counter()
 
-        self.ui.connection_manager.log_timestamped(f"EMA Counter reset for today.")
-
+            self.ui.connection_manager.log_timestamped(f"EMA Counter reset for today.")
 
     def send_report(self):
         date_str = datetime.now().strftime("%Y-%m-%d")
         unsent_path = os.path.join(self.report_log_dir, f"{date_str}.unsent.txt")
         sent_path = os.path.join(self.report_log_dir, f"{date_str}.sent.txt")
 
-        try:
-            subject_id = self.ui.connection_manager.get_subject_id()
-        except Exception as e:
-            subject_id = "Unknown"
-            self.ui.connection_manager.log_timestamped(
-            f"Failed to get BCI2000 Subject ID for daily email report: {e}"
-        )
+        if self.subject_id is None or self.subject_id == "Unknown":
+            try:
+                self.subject_id = self.ui.connection_manager.get_subject_id()
+                if self.subject_id is None:
+                    self.subject_id = "Unknown"
+            except Exception as e:
+                self.subject_id = "Unknown"
+                self.ui.connection_manager.log_timestamped(
+                    f"Failed to get BCI2000 Subject ID for daily email report: {e}"
+                )
 
         if not os.path.exists(unsent_path):
             print(self.report_log_dir)
@@ -87,14 +90,14 @@ class ExperimentReporter:
             self.ui.connection_manager.log_timestamped(f"Failed to read report file: {e}")
             return
 
-        subject = f"[ {subject_id} ] Daily EMA Report - {date_str}"
+        subject = f"[{subject_id}] Daily EMA Report - {date_str}"
         body = (
             "Automated daily summary for today's EMA sessions:\n\n"
             f"Total EMAs Triggered: {counts.get('Triggered', 0)}\n"
             f"  - Responded: {counts.get('Responded', 0)}\n"
             f"    - Of those responded, {counts.get('Completed', 0)} were fully completed.\n"
             f"  - Ignored: {counts.get('Ignored', 0)}\n\n"
-            f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Eastern Time\n\n"
             "Please do not reply to this email."
         )
 
