@@ -4,22 +4,36 @@ import time
 import psutil
 from datetime import datetime, timedelta
 
-sys.path.append('C:\\BCI2000.x64\\prog')
-from BCI2000Remote import BCI2000Remote
+# BCI2000Remote is the vendor SDK for the BCI2000 rig. It's only installed on
+# the actual experiment PC, so importing it fails on any dev/test machine.
+# BCI2000_AVAILABLE gates every BCI2000-specific action below so the rest of
+# the app (EMA, email, data upload) keeps working when it's absent.
+try:
+    sys.path.append('C:\\BCI2000.x64\\prog')
+    from BCI2000Remote import BCI2000Remote
+    BCI2000_AVAILABLE = True
+except ImportError:
+    BCI2000Remote = None
+    BCI2000_AVAILABLE = False
 
 class BCI2000Handler:
     def __init__(self, log_bci_message, send_email):
-        self.bci = BCI2000Remote()
-        self.connected = False
-        self.stop_monitor = threading.Event()
-        self.monitor_thread = threading.Thread(target=self.monitor_connection, daemon=True)
-        self.monitor_thread.start()
         self.log_bci_message = log_bci_message  # Use ConnectionManager's logging function
         self.send_email = send_email    # Use ExperimentReporter's send email function
+        self.connected = False
+        self.stop_monitor = threading.Event()
+
+        if BCI2000_AVAILABLE:
+            self.bci = BCI2000Remote()
+            self.monitor_thread = threading.Thread(target=self.monitor_connection, daemon=True)
+            self.monitor_thread.start()
+        else:
+            self.bci = None
+            self.log_bci_message("BCI2000Remote module not found on this machine - BCI2000 features disabled.")
         #self.schedule_disconnect_reconnect()
 
     def connect_bci2000(self):
-        if self.connected:
+        if not BCI2000_AVAILABLE or self.connected:
             return
         try:
             self.bci.Connect()
@@ -27,7 +41,7 @@ class BCI2000Handler:
             self.log_bci_message("Connected to BCI2000")
         except Exception as e:
             self.log_bci_message(f"Failed to connect to BCI2000: {e}")
-        
+
     def disconnect_bci2000(self):
         if self.connected:
             self.bci.Disconnect()
@@ -35,6 +49,9 @@ class BCI2000Handler:
             self.log_bci_message("Disconnected from BCI2000")
 
     def check_bci2000_running_status(self):
+        if not BCI2000_AVAILABLE:
+            return False
+
         # BCI2000 module name .exe
         target_names = {"SignalGenerator.exe"}
         for proc in psutil.process_iter(attrs=['name']):
@@ -76,18 +93,35 @@ class BCI2000Handler:
             self.log_bci_message(f"Invalid BCI_Sync message format: {message}")
 
     def sync_bci_event(self, event_variable, value_variable):
+        if not BCI2000_AVAILABLE:
+            return
         self.connect_bci2000()  # Ensure connection before sending data
-        
+
         try:
             self.bci.SetEventVariable(event_variable, value_variable)
             self.log_bci_message(f"Synced BCI event: {event_variable} = {value_variable}")
         except Exception as e:
             self.log_bci_message(f"Failed to sync event: {e}")
             self.handle_disconnection()
-    
-    def get_bci_subjectName(self):
+
+    def mark_photodiode_event(self, is_white):
+        """Marks the photodiode flicker color for BCI sync. No-op if BCI2000 is unavailable."""
+        if not BCI2000_AVAILABLE:
+            return
         self.connect_bci2000()
-        
+        try:
+            self.bci.SetEventVariable("EmaColor", 1 if is_white else 2)
+        except Exception as e:
+            self.log_bci_message(f"Failed to set photodiode event: {e}")
+            self.handle_disconnection()
+
+    def get_bci_subjectName(self):
+        if not BCI2000_AVAILABLE:
+            self.log_bci_message("BCI2000Remote not available on this machine; skipping subject name lookup.")
+            return "<BCI_SubjectName>"
+
+        self.connect_bci2000()
+
         try:
             name = self.bci.GetParameter("SubjectName")
             return name if name else "<BCI_SubjectName>"
@@ -104,8 +138,12 @@ class BCI2000Handler:
                 self.send_email(subject, body)
             self.log_bci_message("BCI2000 not connected at EMA log file initialization")
             return "<BCI_SubjectName>"
-    
+
     def get_bci_subjectID(self):
+        if not BCI2000_AVAILABLE:
+            self.log_bci_message("BCI2000Remote not available on this machine; skipping subject ID lookup.")
+            return "<BCI_SubjectSession>"
+
         self.connect_bci2000()
 
         try:

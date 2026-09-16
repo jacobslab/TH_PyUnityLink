@@ -6,7 +6,7 @@ import os
 from datetime import datetime, time as dt_time
 from utils.scheduler.scheduler import Scheduler
 from utils.audio.audio_alert import AudioAlert
-#from utils.bci2000.bci2000_handler import BCI2000Handler
+from utils.bci2000.bci2000_handler import BCI2000Handler
 
 class ConnectionManager:
 
@@ -88,8 +88,9 @@ class ConnectionManager:
         # Study pause state (pauses EMA triggering only; email/data upload keep running)
         self.study_paused = False
 
-        # BCI2000 component
-        #self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
+        # BCI2000 component. Safe to construct on any machine: it self-disables
+        # if the BCI2000Remote SDK isn't installed (e.g. on a dev/test machine).
+        self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
 
         # Start BCI2000 connection check thread
         self.bci_check_interval = 1800  # 30 mins
@@ -273,9 +274,9 @@ class ConnectionManager:
                     self.log_timestamped(f"Invalid LIVE_CHECK_ACK received")
             elif message_line.startswith("BCI_Sync:"):
                 if self.ui.is_bci_enabled.get():
-                    #self.bci_handler.process_bci_data(message_line)
-                    #self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
-                #else:
+                    self.bci_handler.process_bci_data(message_line)
+                    self.log_timestamped(f"Forwarded BCI_Sync message: {message}")
+                else:
                     self.log_timestamped(f"BCI data received but ignored (BCI disabled): {message}")
             else:
                 self.log_ema_message(message_line)
@@ -436,13 +437,7 @@ class ConnectionManager:
                     self.log_latency_timestamped(f"Sent photodiode signal: {signal} - Screen color: {color}")
                     # BCI event marking after logging the latency timestamp
                     if self.ui.is_bci_enabled.get():
-                        if not self.bci_handler.bci.connected:
-                            self.bci_handler.bci.Connect()
-                            self.bci_handler.bci.connected = True
-                        if signal == "FLASH_ON":
-                            self.bci_handler.bci.SetEventVariable("EmaColor", 1)    # 1 for white
-                        else:
-                            self.bci_handler.bci.SetEventVariable("EmaColor", 2)    # 2 for black
+                        self.bci_handler.mark_photodiode_event(signal == "FLASH_ON")
                 except Exception as e:
                     self.log_latency_timestamped(f"Error sending photodiode signal: {e}")
                     break
