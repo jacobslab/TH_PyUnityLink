@@ -329,6 +329,42 @@ class ConnectionManager:
 
             time.sleep(self.bci_check_interval)
 
+"""
+    def bci_check_loop(self):
+        while self.server_running:
+            now = datetime.now().time()
+            start = dt_time(9, 0)   # 9:00 AM
+            end = dt_time(21, 0)    # 9:00 PM
+
+            enabled = [False]
+
+            def read_var():
+                try:
+                    enabled[0] = self.ui.is_bci_enabled.get()
+                except Exception as e:
+                    enabled[0] = False
+                    self.log_bci_timestamped(f"Error reading BCI enabled: {e}")
+
+            self.ui.after(0, read_var)
+
+            timeout = 0
+            while timeout < 0.1:
+                self.ui.update_idletasks()
+                if enabled[0] is not None:
+                    break
+                time.sleep(0.01)
+                timeout += 0.01
+
+            if start <= now <= end and enabled[0]:
+                try:
+                    name = self.bci_handler.get_bci_subjectName()
+                    self.log_bci_timestamped(f"Periodic BCI2000 check: Subject ID: {name}")
+                except Exception as e:
+                    self.log_bci_timestamped(f"Error during BCI2000 check: {e}")
+
+            time.sleep(self.bci_check_interval)
+"""
+
     # Handles client disconnection
     def handle_disconnection(self):
         """Handles client disconnection."""

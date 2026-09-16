@@ -1,8 +1,10 @@
+import threading
 import tkinter as tk
 from ui.ui_handler import UI
 from connection.connection_handler import ConnectionManager
 from utils.qrcode.qrcode_display import QRCodeDisplay
 from utils.reporter.experiment_reporter import ExperimentReporter
+from utils.datauploader import DataUploader
 
 if __name__ == '__main__':
     ui = UI(None)
@@ -33,6 +35,12 @@ if __name__ == '__main__':
     conn_manager = ConnectionManager(ui, ui.update_next_notification_time, reporter)
     ui.connection_manager = conn_manager
 
+<<<<<<< Updated upstream
     reporter.start()
+=======
+    data_uploader = DataUploader()
+    data_uploader.run_sync()
+    #threading.Thread(target=data_uploader.schedule_daily_sync, daemon=True).start()
+>>>>>>> Stashed changes
 
     ui.start()
