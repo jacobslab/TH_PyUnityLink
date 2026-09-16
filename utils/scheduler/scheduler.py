@@ -70,3 +70,9 @@ class Scheduler:
         self.connection_manager.log_timestamped(f"Next EMA session scheduled at: {next_start_time}")
 
         return next_start_time
+
+    def cancel(self):
+        """Cancels any pending scheduled start, without scheduling a new one."""
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None

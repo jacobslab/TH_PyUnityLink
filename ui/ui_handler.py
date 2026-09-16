@@ -98,6 +98,16 @@ class UI:
         cancel_button = tk.Button(self.root, text="Skip Current EMA", command=self.send_skip_signal)
         cancel_button.pack(padx=5)
 
+        # Study pause/resume controls (pauses EMA triggering only)
+        study_frame = tk.Frame(self.root)
+        study_frame.pack(pady=10)
+
+        self.study_status_label = tk.Label(study_frame, text="Study Status: Running", fg="green")
+        self.study_status_label.pack(side=tk.LEFT, padx=10)
+
+        self.pause_study_button = tk.Button(study_frame, text="Pause Study", command=self.toggle_pause_study)
+        self.pause_study_button.pack(side=tk.LEFT, padx=5)
+
         # Create a label for battery level
         self.battery_level_label = tk.Label(self.root, text="Battery Status: N/A")
         self.battery_level_label.pack(pady=10)
@@ -145,11 +155,30 @@ class UI:
 
     def send_start_signal(self):
         if self.connection_manager:
+            if self.connection_manager.study_paused:
+                self.connection_manager.log_timestamped("Start EMA Sequence ignored: study is paused.")
+                return
+
             current_time = datetime.now()
             self.last_start_label.config(text=f"Session Start: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
             next_schedule_time = self.connection_manager.scheduler.schedule_start()
             self.update_next_notification_time(next_schedule_time)
+
+    def toggle_pause_study(self):
+        """Pauses/resumes EMA triggering only. Email reports and data upload keep running."""
+        if not self.connection_manager:
+            return
+
+        if self.connection_manager.study_paused:
+            self.connection_manager.resume_study()
+            self.study_status_label.config(text="Study Status: Running", fg="green")
+            self.pause_study_button.config(text="Pause Study")
+        else:
+            self.connection_manager.pause_study()
+            self.study_status_label.config(text="Study Status: Paused", fg="red")
+            self.pause_study_button.config(text="Resume Study")
+            self.next_start_label.config(text="Next Notification: Paused")
 
     def send_skip_signal(self):
         if self.connection_manager:

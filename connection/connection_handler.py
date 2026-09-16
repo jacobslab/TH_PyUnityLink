@@ -42,9 +42,10 @@ class ConnectionManager:
         server_log_dir = os.path.join(log_base_dir, "server_log")
         self.ema_log_dir = os.path.join(log_base_dir, "ema_log")
         self.latency_log_dir = os.path.join(log_base_dir, "latency_log")
+        self.report_log_dir = os.path.join(log_base_dir, "email_report")
 
         # Ensure all log directories exist
-        for directory in [log_base_dir, server_log_dir, self.ema_log_dir, self.latency_log_dir]:
+        for directory in [log_base_dir, server_log_dir, self.ema_log_dir, self.latency_log_dir, self.report_log_dir]:
             os.makedirs(directory, exist_ok=True)
 
         # Generate unique log file names
@@ -83,6 +84,9 @@ class ConnectionManager:
 
         # Photodiode flicker test running flag
         self.photodiode_test_running = False
+
+        # Study pause state (pauses EMA triggering only; email/data upload keep running)
+        self.study_paused = False
 
         # BCI2000 component
         #self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
@@ -142,6 +146,10 @@ class ConnectionManager:
             self.log_timestamped("No client connected!")
 
     def send_start_signal(self):
+        if self.study_paused:
+            self.log_timestamped("EMA session skipped: study is paused.")
+            return
+
         self.ui.update_qr_code()
 
         if self.connection:
@@ -187,6 +195,32 @@ class ConnectionManager:
             self.log_timestamped("EMA session comfirmed or cancelled")
         else:
             self.log_timestamped("No client connected!")
+
+    def pause_study(self):
+        """Pauses EMA triggering only. Email reports and data upload keep running."""
+        if self.study_paused:
+            return
+        self.study_paused = True
+        self.scheduler.cancel()
+        self.log_timestamped("Study paused: EMA triggering suspended.")
+        self._log_study_event("Paused")
+
+    def resume_study(self):
+        """Resumes EMA triggering and reschedules the next session."""
+        if not self.study_paused:
+            return
+        self.study_paused = False
+        self.log_timestamped("Study resumed: EMA triggering re-enabled.")
+        self._log_study_event("Resumed")
+        self.scheduler.schedule_start()
+
+    def _log_study_event(self, event_label):
+        """Appends a pause/resume event to today's study-events file for the daily email report."""
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        events_path = os.path.join(self.report_log_dir, f"{date_str}.study_events.txt")
+        with open(events_path, "a") as f:
+            f.write(f"{event_label} at {time_str}\n")
 
     def process_received_message(self, message):
         self.buffer += message
@@ -344,21 +378,22 @@ class ConnectionManager:
             self.server = None
         self.log_timestamped("Server stopped")
 
+    def _log(self, message, log_file, echo=True):
+        """Shared timestamp + write (+ optional print) logic for all log methods."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
+        log_message = f"{timestamp} - {message}"
+        if echo:
+            print(log_message)
+        with open(log_file, "a") as f:
+            f.write(log_message + "\n")
+
     # Log and save server messages with timestamp
     def log_timestamped(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
-        server_log_message = f"{timestamp} - {message}"
-        print(server_log_message)
-        with open(self.server_log_file, "a") as log_file:
-            log_file.write(server_log_message + "\n")
+        self._log(message, self.server_log_file)
 
     def log_bci_timestamped(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
-        server_log_message = f"{timestamp} - {message}"
-        #print(server_log_message)
-        with open(self.server_log_file, "a") as log_file:
-            log_file.write(server_log_message + "\n")
-    
+        self._log(message, self.server_log_file, echo=False)
+
     # Log and save EMA messages with timestamp
     def log_ema_message(self, message):
         if not self.ema_log_file:
@@ -436,11 +471,7 @@ class ConnectionManager:
 
 
     def log_latency_timestamped(self, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}"
-        log_message = f"{timestamp} - {message}"
-        print(log_message)
-        with open(self.latency_log_file, "a") as log_file:
-            log_file.write(log_message + "\n")
+        self._log(message, self.latency_log_file)
 
     def get_subject_id(self):
         return self.bci_handler.get_bci_subjectName()

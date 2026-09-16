@@ -90,6 +90,17 @@ class ExperimentReporter:
             self.ui.connection_manager.log_timestamped(f"Failed to read report file: {e}")
             return
 
+        study_events_section = ""
+        events_path = os.path.join(self.report_log_dir, f"{date_str}.study_events.txt")
+        if os.path.exists(events_path):
+            try:
+                with open(events_path, "r") as f:
+                    events = f.read().strip()
+                if events:
+                    study_events_section = "Study Pause/Resume Events Today:\n" + events + "\n\n"
+            except Exception as e:
+                self.ui.connection_manager.log_timestamped(f"Failed to read study events file: {e}")
+
         subject = f"[{self.subject_id}] Daily EMA Report - {date_str}"
         body = (
             "Automated daily summary for today's EMA sessions:\n\n"
@@ -97,6 +108,7 @@ class ExperimentReporter:
             f"  - Responded: {counts.get('Responded', 0)}\n"
             f"    - Of those responded, {counts.get('Completed', 0)} were fully completed.\n"
             f"  - Ignored: {counts.get('Ignored', 0)}\n\n"
+            f"{study_events_section}"
             f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Eastern Time\n\n"
             "Please do not reply to this email."
         )
