@@ -99,32 +99,24 @@ class ConnectionManager:
         try:
             while self.server_running:
                 readable, _, _ = select.select([self.server], [], [], 0.1)
-                if self.server in readable:
-                    if self.connection is None:
-                        self.log_timestamped("Waiting for a new client to connect...")
-                        self.connection, self.address = self.server.accept()
-                        self.log_timestamped(f"Connected to {self.address}")
-                        #self.connection.sendall("Server Initiated".encode('utf-8'))
-                        #self.log_timestamped("Sent INIT message to Unity client")
-                        
-                        self.last_live_check_ack_time = time.time()
+                if self.server in readable and self.connection is None:
+                    self.log_timestamped("Waiting for a new client to connect...")
+                    self.connection, self.address = self.server.accept()
+                    self.log_timestamped(f"Connected to {self.address}")
+                    #self.connection.sendall("Server Initiated".encode('utf-8'))
+                    #self.log_timestamped("Sent INIT message to Unity client")
 
-                        # Start live check once a connection is established
-                        #if self.live_check_thread is None or not self.live_check_thread.is_alive():
-                        ##    time.sleep(1)
-                        #    self.live_check_running = True
-                        #    self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
-                        #    self.live_check_thread.start()
-                        
-                        # First battery check on connection
-                        #self.check_battery()
-                    else:
-                        try:
-                            data = self.connection.recv(1024)
-                            if not data:
-                                self.handle_disconnection()
-                        except (ConnectionResetError, BrokenPipeError):
-                            self.handle_disconnection()
+                    self.last_live_check_ack_time = time.time()
+
+                    # Start live check once a connection is established
+                    #if self.live_check_thread is None or not self.live_check_thread.is_alive():
+                    ##    time.sleep(1)
+                    #    self.live_check_running = True
+                    #    self.live_check_thread = threading.Thread(target=self.live_check_loop, daemon=True)
+                    #    self.live_check_thread.start()
+
+                    # First battery check on connection
+                    #self.check_battery()
                 if self.connection:
                     try:
                         data = self.connection.recv(4096).decode('utf-8')
@@ -223,7 +215,7 @@ class ConnectionManager:
                     battery_status = message_parts[2].strip()
                     self.log_timestamped(f"Battery Level: {int(battery_level*100)}, Status: {battery_status}")
                     if self.ui:
-                        self.ui.battery_level_label.config(text=f"Battery: {int(battery_level*100)}% ({battery_status})")
+                        self.ui.update_battery_label(f"Battery: {int(battery_level*100)}% ({battery_status})")
             elif message_line.startswith("LIVE_CHECK_ACK"):
                 # Extract the live check ID from the response
                 message_parts = message_line.split(":")
@@ -328,42 +320,6 @@ class ConnectionManager:
                     self.log_bci_timestamped(f"Error during BCI2000 check: {e}")
 
             time.sleep(self.bci_check_interval)
-
-"""
-    def bci_check_loop(self):
-        while self.server_running:
-            now = datetime.now().time()
-            start = dt_time(9, 0)   # 9:00 AM
-            end = dt_time(21, 0)    # 9:00 PM
-
-            enabled = [False]
-
-            def read_var():
-                try:
-                    enabled[0] = self.ui.is_bci_enabled.get()
-                except Exception as e:
-                    enabled[0] = False
-                    self.log_bci_timestamped(f"Error reading BCI enabled: {e}")
-
-            self.ui.after(0, read_var)
-
-            timeout = 0
-            while timeout < 0.1:
-                self.ui.update_idletasks()
-                if enabled[0] is not None:
-                    break
-                time.sleep(0.01)
-                timeout += 0.01
-
-            if start <= now <= end and enabled[0]:
-                try:
-                    name = self.bci_handler.get_bci_subjectName()
-                    self.log_bci_timestamped(f"Periodic BCI2000 check: Subject ID: {name}")
-                except Exception as e:
-                    self.log_bci_timestamped(f"Error during BCI2000 check: {e}")
-
-            time.sleep(self.bci_check_interval)
-"""
 
     # Handles client disconnection
     def handle_disconnection(self):

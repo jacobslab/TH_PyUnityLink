@@ -90,7 +90,7 @@ class ExperimentReporter:
             self.ui.connection_manager.log_timestamped(f"Failed to read report file: {e}")
             return
 
-        subject = f"[{subject_id}] Daily EMA Report - {date_str}"
+        subject = f"[{self.subject_id}] Daily EMA Report - {date_str}"
         body = (
             "Automated daily summary for today's EMA sessions:\n\n"
             f"Total EMAs Triggered: {counts.get('Triggered', 0)}\n"

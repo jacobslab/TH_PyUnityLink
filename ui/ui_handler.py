@@ -161,35 +161,43 @@ class UI:
 
     def check_battery_status(self):
         if self.connection_manager:
-            battery_level = self.connection_manager.check_battery()
-            self.battery_level_label.config(text=f"Battery Level: {battery_level}%")
+            # The actual level arrives asynchronously via the BATTERY response
+            # and is applied through update_battery_label().
+            self.connection_manager.check_battery()
+
+    def update_battery_label(self, text):
+        """Thread-safe: may be called from background (socket) threads."""
+        self.root.after(0, lambda: self.battery_level_label.config(text=text))
 
     def update_next_notification_time(self, next_time):
-        if isinstance(next_time, datetime):
-            if self.last_notification_time:
-                self.last_start_label.config(text=f"Last Notification: {self.last_notification_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            self.next_start_label.config(text=f"Next Notification: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        else:
-            self.next_start_label.config(text="Next Notification: N/A")
-    
+        """Thread-safe: may be called from background (scheduler) threads."""
+        def _update():
+            if isinstance(next_time, datetime):
+                if self.last_notification_time:
+                    self.last_start_label.config(text=f"Last Notification: {self.last_notification_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                self.next_start_label.config(text=f"Next Notification: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                self.next_start_label.config(text="Next Notification: N/A")
+        self.root.after(0, _update)
+
     def increment_triggered(self):
         self.triggered_count += 1
-        self.triggered_label.config(text=f"Triggered: {self.triggered_count}")
+        self.root.after(0, lambda: self.triggered_label.config(text=f"Triggered: {self.triggered_count}"))
         self.update_report_counter()
 
     def increment_responded(self):
         self.responded_count += 1
-        self.responded_label.config(text=f"Responded: {self.responded_count}")
+        self.root.after(0, lambda: self.responded_label.config(text=f"Responded: {self.responded_count}"))
         self.update_report_counter()
 
     def increment_completed(self):
         self.completed_count += 1
-        self.completed_label.config(text=f"Completed: {self.completed_count}")
+        self.root.after(0, lambda: self.completed_label.config(text=f"Completed: {self.completed_count}"))
         self.update_report_counter()
 
     def increment_ignored(self):
         self.ignored_count += 1
-        self.ignored_label.config(text=f"Ignored: {self.ignored_count}")
+        self.root.after(0, lambda: self.ignored_label.config(text=f"Ignored: {self.ignored_count}"))
         self.update_report_counter()
 
     def update_report_counter(self):
@@ -207,9 +215,10 @@ class UI:
 
 
     def update_qr_code(self):
-        """Call QR update method from outside."""
+        """Call QR update method from outside. Thread-safe: may be called
+        from background (scheduler) threads."""
         if self.qr_display:
-            self.qr_display.update_qr()
+            self.root.after(0, self.qr_display.update_qr)
 
     def stop_server(self):
         if self.connection_manager:

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"/Users/francis.yli/Documents/CU Work/Codes/TH_PyUnityLink\" log --oneline -20)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\)\")",
+      "Bash(python3 -m py_compile main.py ui/ui_handler.py connection/connection_handler.py utils/reporter/experiment_reporter.py utils/datauploader/data_uploader.py)",
+      "Bash(git show *)",
+      "Bash(python3 -m py_compile /tmp/orig_conn.py)",
+      "Bash(python3 -m py_compile main.py ui/ui_handler.py connection/connection_handler.py utils/reporter/experiment_reporter.py utils/datauploader/data_uploader.py utils/scheduler/scheduler.py utils/audio/audio_alert.py utils/qrcode/qrcode_display.py)",
+      "Bash(kill 79873)",
+      "Bash(kill -9 79873)"
+    ]
+  }
+}
