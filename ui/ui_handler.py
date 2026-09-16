@@ -102,7 +102,7 @@ class UI:
         study_frame = tk.Frame(self.root)
         study_frame.pack(pady=10)
 
-        self.study_status_label = tk.Label(study_frame, text="Study Status: Running", fg="green")
+        self.study_status_label = tk.Label(study_frame, text="Study Status: Not Started", fg="gray")
         self.study_status_label.pack(side=tk.LEFT, padx=10)
 
         self.pause_study_button = tk.Button(study_frame, text="Pause Study", command=self.toggle_pause_study)
@@ -161,6 +161,7 @@ class UI:
 
             current_time = datetime.now()
             self.last_start_label.config(text=f"Session Start: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            self.study_status_label.config(text="Study Status: Running", fg="green")
 
             next_schedule_time = self.connection_manager.scheduler.schedule_start()
             self.update_next_notification_time(next_schedule_time)
