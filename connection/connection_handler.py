@@ -3,6 +3,7 @@ import threading
 import select
 import time
 import os
+import re
 from datetime import datetime, time as dt_time
 from utils.scheduler.scheduler import Scheduler
 from utils.audio.audio_alert import AudioAlert
@@ -27,10 +28,10 @@ class ConnectionManager:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Disable Nagle's Algorithm
-        self.server.bind(('localhost', 4100))
+        #self.server.bind(('localhost', 4100))
         #self.server.bind(('192.168.1.152', 4100))
         #self.server.bind(('192.168.0.101', 4100))
-        #self.server.bind(('192.168.0.103', 4100))
+        self.server.bind(('192.168.137.1', 4100))
         #self.server.bind(('192.168.1.164', 4100))
         #self.server.bind(('192.168.10.20', 4100))
         self.server.listen(1)
@@ -157,10 +158,14 @@ class ConnectionManager:
             # Get log file name from BCI2000
             if self.ui.is_bci_enabled.get():
                 bciSubject = self.bci_handler.get_bci_subjectName() + self.bci_handler.get_bci_subjectID()
-                self.ema_log_file = os.path.join(self.ema_log_dir, f"{bciSubject}_EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+                safe_bciSubject = self._sanitize_filename_component(bciSubject)
+                self.ema_log_file = os.path.join(self.ema_log_dir, f"{safe_bciSubject}_EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
-                with open(self.ema_log_file, "w") as log_file:
-                    log_file.write(f"New EMA session log started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                try:
+                    with open(self.ema_log_file, "w") as log_file:
+                        log_file.write(f"New EMA session log started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                except OSError as e:
+                    self.log_timestamped(f"Failed to create EMA log file '{self.ema_log_file}': {e}")
             else:
                 self.ema_log_file = os.path.join(self.ema_log_dir, f"EMA_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
@@ -378,6 +383,13 @@ class ConnectionManager:
             self.server.close()
             self.server = None
         self.log_timestamped("Server stopped")
+
+    @staticmethod
+    def _sanitize_filename_component(value):
+        """Strips characters that are illegal in Windows filenames (e.g. the
+        '<' '>' left in place when BCI2000 subject/session lookup falls back
+        to its placeholder text) so log file creation can never fail on this."""
+        return re.sub(r'[<>:"/\\|?*]', '', value)
 
     def _log(self, message, log_file, echo=True):
         """Shared timestamp + write (+ optional print) logic for all log methods."""

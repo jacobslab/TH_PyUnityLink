@@ -5,7 +5,7 @@ from datetime import datetime
 
 class AudioAlert:
     def __init__(self, alert_interval = 120, skip_callback = None, ui_instance = None, log_timestamped = None):
-        self.audio_file = "audio_alert.wav"
+        self.audio_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "noise.wav")
         self._alert_interval = alert_interval
         self.end_playing = False
         self.play_thread = None
@@ -29,7 +29,7 @@ class AudioAlert:
 
         while not self.end_playing and (time.time() - start_time) < self._alert_interval:
             #os.system(f'afplay {self.audio_file}')  # MacOS
-            # os.system(f'start {self.audio_file}')  # Windows
+            os.system(f'start {self.audio_file}')  # Windows
             time.sleep(0.5)  # Avoid tight loop
 
         if not self.end_playing:
