@@ -86,7 +86,7 @@ class BCI2000Handler:
             return False
 
         # BCI2000 module process names
-        target_names = {"Dummy Signal Processing.exe", "BCI2000/Operator Watches.exe", "BCI2000/Operator Watches"}
+        target_names = {"Operator.exe", "DummySignalProcessing.exe"}
         for proc in psutil.process_iter(attrs=['name']):
             try:
                 if proc.info['name'] in target_names:
