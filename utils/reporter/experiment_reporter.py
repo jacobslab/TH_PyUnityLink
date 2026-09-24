@@ -101,16 +101,22 @@ class ExperimentReporter:
             except Exception as e:
                 self.ui.connection_manager.log_timestamped(f"Failed to read study events file: {e}")
 
-        subject = f"[{self.subject_id}] Daily EMA Report - {date_str}"
+        subject = (
+            f"[{self.subject_id}] EMA Report {date_str} | "
+            f"T:{counts.get('Triggered', 0)} "
+            f"R:{counts.get('Responded', 0)} "
+            f"C:{counts.get('Completed', 0)} "
+            f"I:{counts.get('Ignored', 0)}"
+        )
         body = (
-            "Automated daily summary for today's EMA sessions:\n\n"
-            f"Total EMAs Triggered: {counts.get('Triggered', 0)}\n"
+            "Automated daily summary of EMA activity:\n\n"
+            f"Total EMA Prompts Triggered: {counts.get('Triggered', 0)}\n"
             f"  - Responded: {counts.get('Responded', 0)}\n"
-            f"    - Of those responded, {counts.get('Completed', 0)} were fully completed.\n"
+            f"    - Completed: {counts.get('Completed', 0)}\n"
             f"  - Ignored: {counts.get('Ignored', 0)}\n\n"
             f"{study_events_section}"
-            f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Eastern Time\n\n"
-            "Please do not reply to this email."
+            f"Report generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Eastern Time\n\n"
+            "This is an automated report. Please do not reply to this email."
         )
 
         msg = MIMEText(body)
