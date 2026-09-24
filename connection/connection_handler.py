@@ -142,7 +142,7 @@ class ConnectionManager:
     # send messages to unity
     def send_message(self, message):
         if self.connection:
-            self.connection.sendall(message.encode('utf-8'))
+            self.connection.sendall((message + "\n").encode('utf-8'))
             self.log_timestamped(f"Sent message to iPad: {message}")
         else:
             self.log_timestamped("No client connected!")
@@ -171,10 +171,10 @@ class ConnectionManager:
 
             # Send the appropriate signal based on the mode
             if self.ui.is_testmode_enabled.get():
-                self.connection.sendall("EMA_START_Test".encode('utf-8'))
+                self.connection.sendall("EMA_START_Test\n".encode('utf-8'))
                 self.log_timestamped(f"Initiated an EMA session [Test]")
             else:
-                self.connection.sendall("EMA_START_Live".encode('utf-8'))
+                self.connection.sendall("EMA_START_Live\n".encode('utf-8'))
                 self.log_timestamped(f"Initiated an EMA session [Live]")
             
             self.ui.increment_triggered();
@@ -197,7 +197,7 @@ class ConnectionManager:
         if self.connection:
             self.audio_alert.stop_audio()
             self.log_timestamped(f"Audio alert - Stop")
-            self.connection.sendall("EMA_SKIP".encode('utf-8'))
+            self.connection.sendall("EMA_SKIP\n".encode('utf-8'))
             self.log_timestamped("EMA session comfirmed or cancelled")
         else:
             self.log_timestamped("No client connected!")
@@ -311,7 +311,7 @@ class ConnectionManager:
             # Generate a unique ID for the live check
             self.last_live_check_id = str(self.liveCheckIdCounter)
             current_timestamp_ms = int(time.time() * 1000)
-            live_check_message = f"LIVE_CHECK:{self.last_live_check_id}:{current_timestamp_ms}"
+            live_check_message = f"LIVE_CHECK:{self.last_live_check_id}:{current_timestamp_ms}\n"
 
             try:
                 self.last_live_check_time = time.time()
@@ -328,7 +328,7 @@ class ConnectionManager:
 
     def check_battery(self):
         if self.connection:
-            self.connection.sendall("BATTERY".encode('utf-8'))
+            self.connection.sendall("BATTERY\n".encode('utf-8'))
             self.log_timestamped("Checking iPad Battery Status")
         else:
             self.log_timestamped("Battery Check Error: No client connected!")
