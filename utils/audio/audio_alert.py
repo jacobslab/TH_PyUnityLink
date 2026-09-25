@@ -34,6 +34,7 @@ class AudioAlert:
 
         if not self.end_playing:
             self.ui.increment_ignored()
+            self.log_timestamped(f"EMA Counter Incremented - Ignored")
         self.log_timestamped("Audio stopped")
         
         if self.skip_callback:

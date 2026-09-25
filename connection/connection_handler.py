@@ -270,7 +270,7 @@ class ConnectionManager:
                             except ValueError:
                                 pass
                             #time.sleep(0.1)
-                            self.log_timestamped(f"Received LIVE_CHECK_ACK:{ack_id} - Latency: {latency_ms:.3f} ms")
+                            self._log(f"Received LIVE_CHECK_ACK:{ack_id} - Latency: {latency_ms:.3f} ms", self.server_log_file, echo=False)
                         self.last_live_check_ack_time = time.time()
                     else:
                         #time.sleep(0.1)
@@ -317,7 +317,7 @@ class ConnectionManager:
                 self.last_live_check_time = time.time()
                 self.connection.sendall(live_check_message.encode('utf-8'))
                 #time.sleep(0.1)
-                self.log_timestamped(f"Sent LIVE_CHECK to iPad:{self.last_live_check_id}")
+                self._log(f"Sent LIVE_CHECK to iPad:{self.last_live_check_id}", self.server_log_file, echo=False)
 
                 # Increment the counter and reset it if needed
                 self.liveCheckIdCounter = (self.liveCheckIdCounter + 1) % self.liveCheckIdLimit

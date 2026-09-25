@@ -21,10 +21,9 @@ class Scheduler:
         
         """
         if self.is_first_session:
-            #delay = random.randint(10, 70)
-            delay = 0
+            delay = random.randint(20, 30)
             self.is_first_session = False
-            next_start_time = datetime.now() + timedelta(seconds=2)
+            next_start_time = datetime.now() + timedelta(minutes=delay)
             #return next_start_time
         else:
             min_delay = 90
@@ -35,7 +34,9 @@ class Scheduler:
 
         # Check if it exceeds 9pm; if so, schedule for the next day at 9am with a new random delay
         if next_start_time.hour >= 21:
+            max_delay = 90
             next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            delay = random.randint(0, max_delay)
             next_start_time += timedelta(minutes=delay)
         elif next_start_time.hour < 9:
             next_start_time = next_start_time.replace(hour=9, minute=0, second=0, microsecond=0)
