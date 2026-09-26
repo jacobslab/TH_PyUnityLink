@@ -96,6 +96,11 @@ class ConnectionManager:
         self.start_signal_ack_timeout = 3  # seconds per attempt
         self.start_ack_event = threading.Event()
 
+        # Subject ID doesn't change once BCI2000 is set up for the day, so once
+        # get_subject_id() gets a real value it's cached here permanently instead
+        # of querying BCI2000 again on every call.
+        self.bci_subject_id_cache = None
+
         # BCI2000 component. Safe to construct on any machine: it self-disables
         # if the BCI2000Remote SDK isn't installed (e.g. on a dev/test machine).
         self.bci_handler = BCI2000Handler(self.log_bci_timestamped, self.reporter.send_email)
@@ -515,4 +520,17 @@ class ConnectionManager:
         self._log(message, self.latency_log_file)
 
     def get_subject_id(self):
-        return self.bci_handler.get_bci_subjectName()
+        """Returns the BCI2000 subject name. Once a real value is fetched it's
+        cached for the rest of the run (the subject ID doesn't change after
+        BCI2000 is set up for the day), so this stops querying BCI2000 once it
+        succeeds instead of re-fetching - and returning the placeholder - on
+        every call."""
+        if self.bci_subject_id_cache:
+            return self.bci_subject_id_cache
+
+        subject_name = self.bci_handler.get_bci_subjectName()
+        if subject_name and subject_name != "<BCI_SubjectName>":
+            self.bci_subject_id_cache = subject_name
+            return subject_name
+
+        return None
